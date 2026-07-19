@@ -1,0 +1,25 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+
+# Local configuration — never commit real credentials or account data
+.env
+.env.*
+!.env.example
+*.local
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*
+
+# Supabase local runtime
+supabase/.branches/
+supabase/.temp/

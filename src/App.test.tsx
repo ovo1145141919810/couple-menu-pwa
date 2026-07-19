@@ -1,0 +1,28 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it } from 'vitest'
+import App from './App'
+import { resetDemoData } from './data/demoRepository'
+
+describe('portfolio entry points', () => {
+  beforeEach(() => {
+    window.location.hash = '#/'
+    resetDemoData()
+  })
+
+  it('explains the private couple app and exposes a sanitized demo', async () => {
+    render(<App />)
+    expect(screen.getByRole('heading', { name: /我们的.*私房菜单/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))
+    expect(await screen.findByText(/脱敏演示模式/)).toBeInTheDocument()
+    expect(screen.getByText('今天想吃什么？')).toBeInTheDocument()
+  })
+
+  it('offers an optional uploaded image for a custom interaction icon', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '想要' }))
+    fireEvent.click(screen.getByRole('button', { name: /创造新互动/ }))
+    expect(screen.getByText('上传自定义图标')).toBeInTheDocument()
+    expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeInTheDocument()
+  })
+})

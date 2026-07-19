@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="我们的私房菜单">
+  <rect width="512" height="512" rx="128" fill="#fff5ef"/>
+  <path d="M256 407c-18-17-119-94-119-176 0-55 35-92 83-92 25 0 48 12 64 34 16-22 39-34 64-34 48 0 83 37 83 92 0 82-101 159-119 176-16 14-40 14-56 0Z" fill="#d96b7e"/>
+  <path d="M168 109v119M137 109v54c0 27 14 43 31 43s31-16 31-43v-54M344 109v126M344 109c42 15 42 89 0 104" fill="none" stroke="#8e3b52" stroke-width="18" stroke-linecap="round"/>
+  <circle cx="256" cy="246" r="34" fill="#fff5ef"/>
+</svg>
