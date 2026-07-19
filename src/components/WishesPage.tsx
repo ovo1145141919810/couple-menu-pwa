@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
-import { Ban, Check, ChefHat, Clock3, Heart, MessageCircleHeart, Send, Star, Utensils, X } from 'lucide-react'
+import { useMemo, useState, type CSSProperties } from 'react'
+import { Ban, Check, ChefHat, Clock3, Heart, MessageCircleHeart, Reply, Send, Star, Utensils, X } from 'lucide-react'
 import { allowedActions, deriveWishlistState, statusLabel } from '../domain'
-import type { AppRepository, AppSnapshot, ItemAction, Profile, Review, WishlistItem } from '../types'
+import type { AppRepository, AppSnapshot, InteractionOption, InteractionResponse, ItemAction, Profile, Review, WishlistItem } from '../types'
 import type { Execute } from './AppShell'
 import SplitText from './effects/SplitText'
 
@@ -55,6 +55,62 @@ function DeclineDialog({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
   )
 }
 
+function ResponseDialog({
+  item,
+  interactions,
+  onClose,
+  onSubmit
+}: {
+  item: WishlistItem
+  interactions: InteractionOption[]
+  onClose: () => void
+  onSubmit: (response: InteractionResponse) => Promise<void>
+}) {
+  const [mode, setMode] = useState<'text' | 'interaction'>('text')
+  const [text, setText] = useState('')
+  const matching = interactions.find((interaction) => interaction.id === item.referenceId)
+  const [interactionId, setInteractionId] = useState(matching?.id || interactions[0]?.id || '')
+
+  return (
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="dialog-card response-dialog" role="dialog" aria-modal="true">
+        <header className="sheet-header"><div><p className="mini-label">SWEET REPLY</p><h2>给「{item.nameSnapshot}」一个回应</h2></div><button className="icon-button" onClick={onClose}><X /></button></header>
+        <p className="dialog-copy">互动已经完成啦。你可以留一句话，也可以回赠一个互动给对方。</p>
+        <div className="segmented-control response-mode" aria-label="选择回应方式">
+          <button className={mode === 'text' ? 'active' : ''} onClick={() => setMode('text')}>一句话</button>
+          <button className={mode === 'interaction' ? 'active' : ''} onClick={() => setMode('interaction')}>回个互动</button>
+        </div>
+        {mode === 'text' ? (
+          <label className="field-label">想对对方说<input autoFocus value={text} maxLength={120} onChange={(event) => setText(event.target.value)} placeholder="比如：收到你的喜欢啦～" /></label>
+        ) : (
+          <div className="response-interaction-grid">
+            {interactions.map((interaction) => (
+              <button
+                key={interaction.id}
+                className={interactionId === interaction.id ? 'active' : ''}
+                style={{ '--response-color': interaction.color } as CSSProperties}
+                aria-pressed={interactionId === interaction.id}
+                onClick={() => setInteractionId(interaction.id)}
+              >
+                <span className={interaction.iconUrl ? 'has-image' : ''}>{interaction.iconUrl ? <img src={interaction.iconUrl} alt="" /> : interaction.emoji}</span>
+                <strong>{interaction.name}</strong>
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          className="button button-primary button-large"
+          disabled={mode === 'text' ? !text.trim() : !interactionId}
+          onClick={() => void onSubmit(mode === 'text' ? { kind: 'text', text } : { kind: 'interaction', interactionId })}
+        >
+          <Reply /> 送出回应
+        </button>
+        <button className="text-action response-later" onClick={onClose}>这次先不回应</button>
+      </section>
+    </div>
+  )
+}
+
 function actionLabel(action: ItemAction) {
   return {
     start: '收到，开始做',
@@ -73,6 +129,8 @@ function ItemCard({
   repository,
   execute,
   onDecline,
+  onFulfill,
+  onRespond,
   onReview
 }: {
   item: WishlistItem
@@ -82,6 +140,8 @@ function ItemCard({
   repository: AppRepository
   execute: Execute
   onDecline: (item: WishlistItem) => void
+  onFulfill: (item: WishlistItem) => void
+  onRespond: (item: WishlistItem) => void
   onReview: (item: WishlistItem) => void
 }) {
   const wishlist = snapshot.wishlists.find((entry) => entry.id === item.wishlistId)!
@@ -90,6 +150,9 @@ function ItemCard({
   const review = snapshot.reviews.find((entry) => entry.itemId === item.id)
   const actions = direction === 'incoming' ? allowedActions(item) : []
   const label = item.kind === 'dish' && item.status === 'pending' ? '等待接单' : statusLabel[item.status]
+  const replyItem = snapshot.items.find((entry) => entry.replyToItemId === item.id)
+  const sourceItem = item.replyToItemId ? snapshot.items.find((entry) => entry.id === item.replyToItemId) : undefined
+  const hasReply = Boolean(item.responseText || replyItem)
 
   return (
     <article className={`wish-card ${item.kind}`}>
@@ -100,7 +163,9 @@ function ItemCard({
           <span className={`status-pill status-${item.status}`}>{label}</span>
         </div>
         {wishlist.note && <p className="wish-note"><MessageCircleHeart /> {wishlist.note}</p>}
+        {sourceItem && <p className="reply-origin"><Reply /> 回应了「{sourceItem.nameSnapshot}」</p>}
         {item.responseText && <p className="response-bubble">“{item.responseText}”</p>}
+        {replyItem && <p className="response-bubble">{direction === 'incoming' ? '你用' : '对方用'}「{replyItem.nameSnapshot}」回应了这份互动 · {statusLabel[replyItem.status]}</p>}
         {review && <div className="review-preview"><span>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>{review.comment && <p>{review.comment}</p>}</div>}
         <div className="wish-meta"><Clock3 /> {new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(item.createdAt))}</div>
         {actions.length > 0 && (
@@ -109,7 +174,7 @@ function ItemCard({
               <button
                 key={action}
                 className={action === 'decline' ? 'button button-ghost' : 'button button-primary'}
-                onClick={() => action === 'decline' ? onDecline(item) : void execute(() => repository.transitionItem(item.id, action), action === 'serve' || action === 'fulfill' ? '又完成一件甜蜜小事 💗' : '已经回应对方啦')}
+                onClick={() => action === 'decline' ? onDecline(item) : action === 'fulfill' ? onFulfill(item) : void execute(() => repository.transitionItem(item.id, action), action === 'serve' ? '又完成一件甜蜜小事 💗' : '已经回应对方啦')}
               >
                 {action === 'start' && <ChefHat />}{action === 'serve' && <Send />}{action === 'accept' && <Heart />}{action === 'fulfill' && <Check />}{action === 'decline' && <Ban />}
                 {actionLabel(action)}
@@ -123,6 +188,9 @@ function ItemCard({
         {direction === 'outgoing' && profile.role === 'girlfriend' && item.kind === 'dish' && item.status === 'served' && (
           <button className="button button-review" onClick={() => onReview(item)}><Star /> {review ? '修改评价' : '写下评价'}</button>
         )}
+        {direction === 'incoming' && item.kind === 'interaction' && item.status === 'fulfilled' && !hasReply && (
+          <button className="button button-response" onClick={() => onRespond(item)}><Reply /> 回应一下</button>
+        )}
       </div>
     </article>
   )
@@ -131,6 +199,7 @@ function ItemCard({
 export function WishesPage({ snapshot, profile, repository, execute }: { snapshot: AppSnapshot; profile: Profile; repository: AppRepository; execute: Execute }) {
   const [declineItem, setDeclineItem] = useState<WishlistItem | null>(null)
   const [reviewItem, setReviewItem] = useState<WishlistItem | null>(null)
+  const [responseItem, setResponseItem] = useState<WishlistItem | null>(null)
   const wishlistMap = useMemo(() => new Map(snapshot.wishlists.map((wishlist) => [wishlist.id, wishlist])), [snapshot.wishlists])
   const sorted = [...snapshot.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const incomingActive = sorted.filter((item) => wishlistMap.get(item.wishlistId)?.receiverId === profile.id && !terminal.has(item.status))
@@ -149,6 +218,11 @@ export function WishesPage({ snapshot, profile, repository, execute }: { snapsho
         repository={repository}
         execute={execute}
         onDecline={setDeclineItem}
+        onFulfill={(fulfilledItem) => void execute(
+          () => repository.transitionItem(fulfilledItem.id, 'fulfill'),
+          '互动完成啦，可以给对方一个回应 💗'
+        ).then((ok) => { if (ok) setResponseItem(fulfilledItem) })}
+        onRespond={setResponseItem}
         onReview={setReviewItem}
       />
     ))
@@ -169,6 +243,7 @@ export function WishesPage({ snapshot, profile, repository, execute }: { snapsho
       {receivedHistory.length > 0 && <><div className="subsection-heading"><h3>我回应过的</h3><span>{receivedHistory.length}</span></div><div className="wish-list faded-list">{renderList(receivedHistory, 'incoming')}</div></>}
 
       {declineItem && <DeclineDialog onClose={() => setDeclineItem(null)} onSubmit={async (reply) => { const ok = await execute(() => repository.transitionItem(declineItem.id, 'decline', reply), '已经把回复送过去了'); if (ok) setDeclineItem(null) }} />}
+      {responseItem && <ResponseDialog item={responseItem} interactions={snapshot.interactions.filter((interaction) => !interaction.archivedAt)} onClose={() => setResponseItem(null)} onSubmit={async (response) => { const ok = await execute(() => repository.respondToInteraction(responseItem.id, response), response.kind === 'text' ? '想说的话已经送到啦 💌' : '回赠的互动已经送出啦 💗'); if (ok) setResponseItem(null) }} />}
       {reviewItem && <ReviewDialog item={reviewItem} existing={snapshot.reviews.find((review) => review.itemId === reviewItem.id)} onClose={() => setReviewItem(null)} onSave={async (rating, comment) => { const ok = await execute(() => repository.saveReview(reviewItem.id, rating, comment), '喜欢已经被认真记下 ⭐'); if (ok) setReviewItem(null) }} />}
     </section>
   )

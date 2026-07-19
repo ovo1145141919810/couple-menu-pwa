@@ -59,6 +59,7 @@ export interface WishlistItem {
   quantity: number
   status: ItemStatus
   responseText?: string | null
+  replyToItemId?: string | null
   createdAt: string
   startedAt?: string | null
   completedAt?: string | null
@@ -94,12 +95,16 @@ export interface CartItem {
 }
 
 export type ItemAction = 'start' | 'serve' | 'accept' | 'decline' | 'fulfill'
+export type InteractionResponse =
+  | { kind: 'text'; text: string }
+  | { kind: 'interaction'; interactionId: string }
 
 export interface AppRepository {
   load(): Promise<AppSnapshot>
   subscribe(onChange: () => void): () => void
   createWishlist(sender: Profile, items: CartItem[], note: string): Promise<void>
   transitionItem(itemId: string, action: ItemAction, responseText?: string): Promise<void>
+  respondToInteraction(itemId: string, response: InteractionResponse): Promise<void>
   cancelItem(itemId: string): Promise<void>
   saveReview(itemId: string, rating: number, comment: string): Promise<void>
   createCategory(name: string): Promise<void>

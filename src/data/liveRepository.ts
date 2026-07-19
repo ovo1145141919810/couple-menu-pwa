@@ -5,6 +5,7 @@ import type {
   Category,
   Dish,
   InteractionOption,
+  InteractionResponse,
   ItemAction,
   Profile,
   Review,
@@ -113,6 +114,7 @@ export class LiveRepository implements AppRepository {
           quantity: row.quantity,
           status: row.status,
           responseText: row.response_text,
+          replyToItemId: row.reply_to_item_id,
           createdAt: row.created_at,
           startedAt: row.started_at,
           completedAt: row.completed_at,
@@ -197,6 +199,15 @@ export class LiveRepository implements AppRepository {
       p_response_text: responseText.trim() || null
     })
     ensureNoError(error, '心愿状态更新失败，请刷新后再试。')
+  }
+
+  async respondToInteraction(itemId: string, response: InteractionResponse) {
+    const { error } = await requiredClient().rpc('respond_to_interaction', {
+      p_item_id: itemId,
+      p_response_text: response.kind === 'text' ? response.text.trim() || null : null,
+      p_reply_interaction_id: response.kind === 'interaction' ? response.interactionId : null
+    })
+    ensureNoError(error, '回礼发送失败，请刷新后再试。')
   }
 
   async cancelItem(itemId: string) {

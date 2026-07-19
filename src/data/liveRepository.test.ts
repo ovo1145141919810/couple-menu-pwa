@@ -56,4 +56,21 @@ describe('LiveRepository production writes', () => {
     await expect(repository.createWishlist(girlfriend, [{ kind: 'dish', referenceId: 'dish-id', name: '汤', quantity: 1 }], ''))
       .rejects.toThrow('只有女朋友可以点菜。')
   })
+
+  it('sends text and reciprocal interaction responses through the atomic reply function', async () => {
+    const repository = new LiveRepository(girlfriend)
+    await repository.respondToInteraction('fulfilled-item', { kind: 'text', text: '我也很开心' })
+    await repository.respondToInteraction('another-item', { kind: 'interaction', interactionId: 'kiss-id' })
+
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'respond_to_interaction', {
+      p_item_id: 'fulfilled-item',
+      p_response_text: '我也很开心',
+      p_reply_interaction_id: null
+    })
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'respond_to_interaction', {
+      p_item_id: 'another-item',
+      p_response_text: null,
+      p_reply_interaction_id: 'kiss-id'
+    })
+  })
 })

@@ -3,6 +3,7 @@ import type {
   AppRepository,
   AppSnapshot,
   CartItem,
+  InteractionResponse,
   ItemAction,
   Profile,
   Role
@@ -124,6 +125,56 @@ export class DemoRepository implements AppRepository {
       item.status = 'declined'
       item.responseText = responseText.trim() || null
       item.completedAt = timestamp
+    }
+    writeDemoData(snapshot)
+  }
+
+  async respondToInteraction(itemId: string, response: InteractionResponse) {
+    const snapshot = readDemoData()
+    const actor = this.profile(snapshot)
+    const item = snapshot.items.find((entry) => entry.id === itemId)
+    const wishlist = snapshot.wishlists.find((entry) => entry.id === item?.wishlistId)
+    if (!item || !wishlist) throw new Error('这条互动不存在。')
+    if (wishlist.receiverId !== actor.id || item.kind !== 'interaction' || item.status !== 'fulfilled') {
+      throw new Error('只有完成互动的人可以送出回礼。')
+    }
+    if (item.responseText || snapshot.items.some((entry) => entry.replyToItemId === item.id)) {
+      throw new Error('这条互动已经回应过啦。')
+    }
+
+    if (response.kind === 'text') {
+      const text = response.text.trim()
+      if (!text) throw new Error('写一句回应再发送吧。')
+      if (text.length > 120) throw new Error('回应最多 120 个字。')
+      item.responseText = text
+    } else {
+      const interaction = snapshot.interactions.find(
+        (entry) => entry.id === response.interactionId && !entry.archivedAt
+      )
+      if (!interaction) throw new Error('这个互动已经不可用，请换一个。')
+      const wishlistId = id('wish')
+      const createdAt = new Date().toISOString()
+      snapshot.wishlists.unshift({
+        id: wishlistId,
+        senderId: actor.id,
+        receiverId: wishlist.senderId,
+        note: null,
+        createdAt
+      })
+      snapshot.items.unshift({
+        id: id('item'),
+        wishlistId,
+        kind: 'interaction',
+        referenceId: interaction.id,
+        nameSnapshot: interaction.name,
+        emojiSnapshot: interaction.emoji,
+        iconPathSnapshot: interaction.iconPath || null,
+        iconUrl: interaction.iconUrl || null,
+        quantity: 1,
+        status: 'pending',
+        replyToItemId: item.id,
+        createdAt
+      })
     }
     writeDemoData(snapshot)
   }

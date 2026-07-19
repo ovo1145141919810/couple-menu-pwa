@@ -9,6 +9,7 @@ describe('privacy-safe demo repository', () => {
     const repo = new DemoRepository(() => role)
     const initial = await repo.load()
     const girlfriend = initial.profiles.find((profile) => profile.role === 'girlfriend')!
+    const boyfriend = initial.profiles.find((profile) => profile.role === 'boyfriend')!
     const dish = initial.dishes[0]
     const hug = initial.interactions.find((interaction) => interaction.name === '抱抱')!
 
@@ -33,10 +34,22 @@ describe('privacy-safe demo repository', () => {
     await repo.transitionItem(dishItem.id, 'start')
     await repo.transitionItem(loveItem.id, 'accept')
     await repo.transitionItem(loveItem.id, 'fulfill')
+    await repo.respondToInteraction(loveItem.id, { kind: 'interaction', interactionId: hug.id })
 
     snapshot = readDemoData()
     expect(snapshot.items.find((item) => item.id === dishItem.id)?.status).toBe('cooking')
     expect(snapshot.items.find((item) => item.id === loveItem.id)?.status).toBe('fulfilled')
+    const reciprocal = snapshot.items.find((item) => item.replyToItemId === loveItem.id)!
+    const reciprocalWishlist = snapshot.wishlists.find((item) => item.id === reciprocal.wishlistId)!
+    expect(reciprocal).toMatchObject({ kind: 'interaction', nameSnapshot: '抱抱', status: 'pending' })
+    expect(reciprocalWishlist).toMatchObject({ senderId: boyfriend.id, receiverId: girlfriend.id })
+  })
+
+  it('stores one optional text response after a fulfilled interaction', async () => {
+    const repo = new DemoRepository(() => 'boyfriend')
+    await repo.respondToInteraction('item-memory-hug', { kind: 'text', text: '抱得很开心，下次还要！' })
+    expect(readDemoData().items.find((item) => item.id === 'item-memory-hug')?.responseText).toBe('抱得很开心，下次还要！')
+    await expect(repo.respondToInteraction('item-memory-hug', { kind: 'text', text: '再回一次' })).rejects.toThrow('已经回应过')
   })
 
   it('prevents the boyfriend from ordering dishes', async () => {
