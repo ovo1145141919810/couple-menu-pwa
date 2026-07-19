@@ -13,9 +13,27 @@ enabled = true
 
 [auth]
 enabled = true
-site_url = "http://localhost:5173"
+site_url = "https://ovo1145141919810.github.io/couple-menu-pwa/"
+additional_redirect_urls = ["http://localhost:5173/**"]
 enable_signup = false
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = false
+double_confirm_changes = true
+enable_confirmations = true
+secure_password_change = false
+max_frequency = "1m0s"
+otp_length = 8
+otp_expiry = 3600
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
 
 [storage]
 enabled = true
 file_size_limit = "12MiB"
+
+[storage.vector]
+enabled = false
