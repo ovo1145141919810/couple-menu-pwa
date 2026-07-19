@@ -13,7 +13,7 @@ const migrations = await Promise.all(migrationNames.map(async (name) => ({ name,
 const allSql = migrations.map(({ sql }) => sql).join('\n')
 const failures = []
 
-const requiredTables = ['profiles', 'categories', 'dishes', 'interaction_options', 'wishlists', 'wishlist_items', 'reviews']
+const requiredTables = ['profiles', 'categories', 'dishes', 'interaction_options', 'wishlists', 'wishlist_items', 'reviews', 'push_subscriptions']
 for (const table of requiredTables) {
   if (!new RegExp(`alter\\s+table\\s+public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, 'i').test(allSql)) {
     failures.push(`${table}: RLS is not enabled in migrations`)
@@ -24,6 +24,7 @@ if (!/enable_signup\s*=\s*false/i.test(config)) failures.push('supabase/config.t
 if (!migrationNames.some((name) => name.includes('production_hardening'))) failures.push('production hardening migration is missing')
 if (!/revoke all privileges[\s\S]+from anon, authenticated/i.test(allSql)) failures.push('least-privilege table revocation is missing')
 if (!/vars\.VITE_SUPABASE_PUBLISHABLE_KEY/.test(pagesWorkflow)) failures.push('Pages must read the publishable key from a GitHub variable')
+if (!/vars\.VITE_VAPID_PUBLIC_KEY/.test(pagesWorkflow)) failures.push('Pages must read the public VAPID key from a GitHub variable')
 if (/SUPABASE_(?:SECRET|SERVICE_ROLE)_KEY/i.test(pagesWorkflow)) failures.push('Pages workflow must never receive a Supabase secret key')
 if (!/VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_replace_me/.test(envExample)) failures.push('.env.example must contain only the publishable placeholder')
 

@@ -39,3 +39,8 @@ file_size_limit = "12MiB"
 
 [storage.vector]
 enabled = false
+
+[functions.send-notification]
+# The function verifies the signed-in user's access token itself so it also works
+# with Supabase's current asymmetric Auth tokens.
+verify_jwt = false

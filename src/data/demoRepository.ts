@@ -179,6 +179,23 @@ export class DemoRepository implements AppRepository {
     writeDemoData(snapshot)
   }
 
+  async replyToDecline(itemId: string, text: string) {
+    const snapshot = readDemoData()
+    const actor = this.profile(snapshot)
+    const item = snapshot.items.find((entry) => entry.id === itemId)
+    const wishlist = snapshot.wishlists.find((entry) => entry.id === item?.wishlistId)
+    const reply = text.trim()
+    if (!item || !wishlist) throw new Error('这条互动不存在。')
+    if (wishlist.senderId !== actor.id || item.kind !== 'interaction' || item.status !== 'declined' || !item.responseText) {
+      throw new Error('只有互动发起人可以回复这条拒绝留言。')
+    }
+    if (item.senderReplyText) throw new Error('这条留言已经回复过啦。')
+    if (!reply) throw new Error('写一句回复再发送吧。')
+    if (reply.length > 120) throw new Error('回复最多 120 个字。')
+    item.senderReplyText = reply
+    writeDemoData(snapshot)
+  }
+
   async cancelItem(itemId: string) {
     const snapshot = readDemoData()
     const actor = this.profile(snapshot)

@@ -59,6 +59,7 @@ export interface WishlistItem {
   quantity: number
   status: ItemStatus
   responseText?: string | null
+  senderReplyText?: string | null
   replyToItemId?: string | null
   createdAt: string
   startedAt?: string | null
@@ -105,6 +106,7 @@ export interface AppRepository {
   createWishlist(sender: Profile, items: CartItem[], note: string): Promise<void>
   transitionItem(itemId: string, action: ItemAction, responseText?: string): Promise<void>
   respondToInteraction(itemId: string, response: InteractionResponse): Promise<void>
+  replyToDecline(itemId: string, text: string): Promise<void>
   cancelItem(itemId: string): Promise<void>
   saveReview(itemId: string, rating: number, comment: string): Promise<void>
   createCategory(name: string): Promise<void>

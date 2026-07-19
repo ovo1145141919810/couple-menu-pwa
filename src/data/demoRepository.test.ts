@@ -52,6 +52,22 @@ describe('privacy-safe demo repository', () => {
     await expect(repo.respondToInteraction('item-memory-hug', { kind: 'text', text: '再回一次' })).rejects.toThrow('已经回应过')
   })
 
+  it('lets the original sender reply once to a written decline', async () => {
+    let role: 'girlfriend' | 'boyfriend' = 'boyfriend'
+    const repo = new DemoRepository(() => role)
+    await repo.transitionItem('item-pending-kiss', 'decline', '今天先欠着，明天补给你')
+    role = 'girlfriend'
+    await repo.replyToDecline('item-pending-kiss', '好呀，说定了！')
+
+    const item = readDemoData().items.find((entry) => entry.id === 'item-pending-kiss')
+    expect(item).toMatchObject({
+      status: 'declined',
+      responseText: '今天先欠着，明天补给你',
+      senderReplyText: '好呀，说定了！'
+    })
+    await expect(repo.replyToDecline('item-pending-kiss', '第二次回复')).rejects.toThrow('已经回复过')
+  })
+
   it('prevents the boyfriend from ordering dishes', async () => {
     const repo = new DemoRepository(() => 'boyfriend')
     const snapshot = await repo.load()

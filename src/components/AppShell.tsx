@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChefHat, HeartHandshake, History, ListTodo, LogOut, RotateCcw, ShoppingBag, Sparkles, Utensils } from 'lucide-react'
+import { Bell, ChefHat, HeartHandshake, History, ListTodo, LogOut, RotateCcw, ShoppingBag, Sparkles, Utensils } from 'lucide-react'
 import type { AppRepository, CartItem, Profile, Role } from '../types'
 import { roleLabel } from '../domain'
 import { useSnapshot } from '../hooks/useSnapshot'
@@ -8,6 +8,8 @@ import { WishesPage } from './WishesPage'
 import { ManagePage } from './ManagePage'
 import { MemoriesPage } from './MemoriesPage'
 import { CartSheet } from './CartSheet'
+import { PushSettingsDialog } from './PushSettingsDialog'
+import { syncExistingPushSubscription } from '../lib/push'
 
 export type Execute = (operation: () => Promise<void>, success?: string) => Promise<boolean>
 
@@ -63,6 +65,7 @@ export function AppShell({ mode, currentRole, currentProfile, repository, onRole
   const [cartOpen, setCartOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [pushSettingsOpen, setPushSettingsOpen] = useState(false)
   const previousPending = useRef<Set<string> | null>(null)
   const cartKey = `couple-menu-cart-${mode}-${currentProfile?.id || currentRole}`
   const [cart, setCart] = useState<CartItem[]>(() => {
@@ -74,6 +77,9 @@ export function AppShell({ mode, currentRole, currentProfile, repository, onRole
   })
 
   useEffect(() => localStorage.setItem(cartKey, JSON.stringify(cart)), [cart, cartKey])
+  useEffect(() => {
+    if (mode === 'live') void syncExistingPushSubscription()
+  }, [mode, currentProfile?.id])
   useEffect(() => {
     if (!toast) return
     const timer = window.setTimeout(() => setToast(null), 2800)
@@ -169,6 +175,7 @@ export function AppShell({ mode, currentRole, currentProfile, repository, onRole
             </button>
           )}
           {mode === 'demo' && onReset && <button className="icon-button" aria-label="重置演示" onClick={onReset}><RotateCcw /></button>}
+          {mode === 'live' && <button className="icon-button" aria-label="消息提醒设置" onClick={() => setPushSettingsOpen(true)}><Bell /></button>}
           {mode === 'live' && onLogout && <button className="icon-button" aria-label="退出登录" onClick={() => void onLogout()}><LogOut /></button>}
         </div>
       </header>
@@ -228,6 +235,8 @@ export function AppShell({ mode, currentRole, currentProfile, repository, onRole
           }}
         />
       )}
+
+      {pushSettingsOpen && <PushSettingsDialog onClose={() => setPushSettingsOpen(false)} />}
 
       {toast && <div className="toast" role="status">{toast}</div>}
       {busy && <div className="busy-indicator" aria-label="正在处理" />}

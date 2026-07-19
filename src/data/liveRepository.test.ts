@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => {
   const rpc = vi.fn()
+  const invoke = vi.fn()
   const removeChannel = vi.fn()
   const channel = {
     on: vi.fn(),
@@ -9,10 +10,11 @@ const mocks = vi.hoisted(() => {
   }
   const client = {
     rpc,
+    functions: { invoke },
     removeChannel,
     channel: vi.fn(() => channel)
   }
-  return { rpc, removeChannel, channel, client }
+  return { rpc, invoke, removeChannel, channel, client }
 })
 
 vi.mock('../lib/supabase', () => ({ supabase: mocks.client }))
@@ -26,6 +28,7 @@ describe('LiveRepository production writes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.rpc.mockResolvedValue({ error: null })
+    mocks.invoke.mockResolvedValue({ error: null })
     mocks.channel.on.mockImplementation(() => mocks.channel)
     mocks.channel.subscribe.mockReturnValue(mocks.channel)
   })
@@ -71,6 +74,19 @@ describe('LiveRepository production writes', () => {
       p_item_id: 'another-item',
       p_response_text: null,
       p_reply_interaction_id: 'kiss-id'
+    })
+  })
+
+  it('replies to a written decline and requests an offline push', async () => {
+    const repository = new LiveRepository(girlfriend)
+    await repository.replyToDecline('declined-item', '那我下次再来抱你')
+
+    expect(mocks.rpc).toHaveBeenCalledWith('reply_to_decline', {
+      p_item_id: 'declined-item',
+      p_reply_text: '那我下次再来抱你'
+    })
+    expect(mocks.invoke).toHaveBeenCalledWith('send-notification', {
+      body: { event: 'decline_reply', resourceId: 'declined-item' }
     })
   })
 })

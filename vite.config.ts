@@ -9,15 +9,20 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
       includeAssets: ['couple-mark.svg', 'couple-mark-512.png'],
       manifest: {
         name: '我们的私房菜单',
         short_name: '私房菜单',
+        lang: 'zh-CN',
         description: '只属于两个人的点菜与甜蜜互动空间',
         theme_color: '#8e3b52',
         background_color: '#fff9f5',
         display: 'standalone',
+        id: './',
         start_url: '.',
         scope: '.',
         orientation: 'portrait',
@@ -36,8 +41,7 @@ export default defineConfig({
           }
         ]
       },
-      workbox: {
-        navigateFallback: 'index.html',
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg}']
       },
       devOptions: { enabled: false }

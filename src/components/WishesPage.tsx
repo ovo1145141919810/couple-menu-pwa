@@ -55,6 +55,20 @@ function DeclineDialog({ onClose, onSubmit }: { onClose: () => void; onSubmit: (
   )
 }
 
+function DeclineReplyDialog({ item, onClose, onSubmit }: { item: WishlistItem; onClose: () => void; onSubmit: (reply: string) => Promise<void> }) {
+  const [reply, setReply] = useState('')
+  return (
+    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <section className="dialog-card" role="dialog" aria-modal="true">
+        <header className="sheet-header"><div><p className="mini-label">REPLY WITH LOVE</p><h2>回复对方的留言</h2></div><button className="icon-button" onClick={onClose}><X /></button></header>
+        <p className="dialog-copy">对方说：“{item.responseText}”</p>
+        <label className="field-label">我的回复<input autoFocus value={reply} maxLength={120} onChange={(event) => setReply(event.target.value)} placeholder="把想说的话温柔地送回去" /></label>
+        <button className="button button-primary button-large" disabled={!reply.trim()} onClick={() => void onSubmit(reply)}><Reply /> 发送回复</button>
+      </section>
+    </div>
+  )
+}
+
 function ResponseDialog({
   item,
   interactions,
@@ -131,6 +145,7 @@ function ItemCard({
   onDecline,
   onFulfill,
   onRespond,
+  onReplyDecline,
   onReview
 }: {
   item: WishlistItem
@@ -142,6 +157,7 @@ function ItemCard({
   onDecline: (item: WishlistItem) => void
   onFulfill: (item: WishlistItem) => void
   onRespond: (item: WishlistItem) => void
+  onReplyDecline: (item: WishlistItem) => void
   onReview: (item: WishlistItem) => void
 }) {
   const wishlist = snapshot.wishlists.find((entry) => entry.id === item.wishlistId)!
@@ -164,7 +180,8 @@ function ItemCard({
         </div>
         {wishlist.note && <p className="wish-note"><MessageCircleHeart /> {wishlist.note}</p>}
         {sourceItem && <p className="reply-origin"><Reply /> 回应了「{sourceItem.nameSnapshot}」</p>}
-        {item.responseText && <p className="response-bubble">“{item.responseText}”</p>}
+        {item.responseText && <div className="conversation-bubble"><span>{item.status === 'declined' ? (direction === 'incoming' ? '我的留言' : '对方留言') : '甜蜜回应'}</span><p>“{item.responseText}”</p></div>}
+        {item.senderReplyText && <div className="conversation-bubble sender-reply"><span>{direction === 'outgoing' ? '我的回复' : '对方回复'}</span><p>“{item.senderReplyText}”</p></div>}
         {replyItem && <p className="response-bubble">{direction === 'incoming' ? '你用' : '对方用'}「{replyItem.nameSnapshot}」回应了这份互动 · {statusLabel[replyItem.status]}</p>}
         {review && <div className="review-preview"><span>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>{review.comment && <p>{review.comment}</p>}</div>}
         <div className="wish-meta"><Clock3 /> {new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(item.createdAt))}</div>
@@ -191,6 +208,9 @@ function ItemCard({
         {direction === 'incoming' && item.kind === 'interaction' && item.status === 'fulfilled' && !hasReply && (
           <button className="button button-response" onClick={() => onRespond(item)}><Reply /> 回应一下</button>
         )}
+        {direction === 'outgoing' && item.kind === 'interaction' && item.status === 'declined' && item.responseText && !item.senderReplyText && (
+          <button className="button button-response" onClick={() => onReplyDecline(item)}><Reply /> 回复留言</button>
+        )}
       </div>
     </article>
   )
@@ -200,6 +220,7 @@ export function WishesPage({ snapshot, profile, repository, execute }: { snapsho
   const [declineItem, setDeclineItem] = useState<WishlistItem | null>(null)
   const [reviewItem, setReviewItem] = useState<WishlistItem | null>(null)
   const [responseItem, setResponseItem] = useState<WishlistItem | null>(null)
+  const [declineReplyItem, setDeclineReplyItem] = useState<WishlistItem | null>(null)
   const wishlistMap = useMemo(() => new Map(snapshot.wishlists.map((wishlist) => [wishlist.id, wishlist])), [snapshot.wishlists])
   const sorted = [...snapshot.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const incomingActive = sorted.filter((item) => wishlistMap.get(item.wishlistId)?.receiverId === profile.id && !terminal.has(item.status))
@@ -223,6 +244,7 @@ export function WishesPage({ snapshot, profile, repository, execute }: { snapsho
           '互动完成啦，可以给对方一个回应 💗'
         ).then((ok) => { if (ok) setResponseItem(fulfilledItem) })}
         onRespond={setResponseItem}
+        onReplyDecline={setDeclineReplyItem}
         onReview={setReviewItem}
       />
     ))
@@ -243,6 +265,7 @@ export function WishesPage({ snapshot, profile, repository, execute }: { snapsho
       {receivedHistory.length > 0 && <><div className="subsection-heading"><h3>我回应过的</h3><span>{receivedHistory.length}</span></div><div className="wish-list faded-list">{renderList(receivedHistory, 'incoming')}</div></>}
 
       {declineItem && <DeclineDialog onClose={() => setDeclineItem(null)} onSubmit={async (reply) => { const ok = await execute(() => repository.transitionItem(declineItem.id, 'decline', reply), '已经把回复送过去了'); if (ok) setDeclineItem(null) }} />}
+      {declineReplyItem && <DeclineReplyDialog item={declineReplyItem} onClose={() => setDeclineReplyItem(null)} onSubmit={async (reply) => { const ok = await execute(() => repository.replyToDecline(declineReplyItem.id, reply), '回复已经送到对方那里啦 💌'); if (ok) setDeclineReplyItem(null) }} />}
       {responseItem && <ResponseDialog item={responseItem} interactions={snapshot.interactions.filter((interaction) => !interaction.archivedAt)} onClose={() => setResponseItem(null)} onSubmit={async (response) => { const ok = await execute(() => repository.respondToInteraction(responseItem.id, response), response.kind === 'text' ? '想说的话已经送到啦 💌' : '回赠的互动已经送出啦 💗'); if (ok) setResponseItem(null) }} />}
       {reviewItem && <ReviewDialog item={reviewItem} existing={snapshot.reviews.find((review) => review.itemId === reviewItem.id)} onClose={() => setReviewItem(null)} onSave={async (rating, comment) => { const ok = await execute(() => repository.saveReview(reviewItem.id, rating, comment), '喜欢已经被认真记下 ⭐'); if (ok) setReviewItem(null) }} />}
     </section>

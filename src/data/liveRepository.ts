@@ -46,6 +46,16 @@ const ensureNoError = (error: unknown, fallback: string) => {
 export class LiveRepository implements AppRepository {
   constructor(private readonly profile: Profile) {}
 
+  private async notify(event: string, resourceId: string) {
+    try {
+      await requiredClient().functions.invoke('send-notification', {
+        body: { event, resourceId }
+      })
+    } catch {
+      // The database action is complete; push delivery is best-effort.
+    }
+  }
+
   async load(): Promise<AppSnapshot> {
     const client = requiredClient()
     const [profiles, categories, dishes, interactions, wishlists, items, reviews] = await Promise.all([
@@ -114,6 +124,7 @@ export class LiveRepository implements AppRepository {
           quantity: row.quantity,
           status: row.status,
           responseText: row.response_text,
+          senderReplyText: row.sender_reply_text,
           replyToItemId: row.reply_to_item_id,
           createdAt: row.created_at,
           startedAt: row.started_at,
@@ -181,7 +192,7 @@ export class LiveRepository implements AppRepository {
 
   async createWishlist(sender: Profile, items: CartItem[], note: string) {
     if (sender.id !== this.profile.id) throw new Error('登录状态已经变化，请重新登录。')
-    const { error } = await requiredClient().rpc('create_wishlist', {
+    const { data, error } = await requiredClient().rpc('create_wishlist', {
       p_items: items.map((item) => ({
         kind: item.kind,
         reference_id: item.referenceId,
@@ -190,6 +201,7 @@ export class LiveRepository implements AppRepository {
       p_note: note.trim() || null
     })
     ensureNoError(error, '心愿单发送失败，请稍后再试。')
+    if (typeof data === 'string') await this.notify('wishlist_created', data)
   }
 
   async transitionItem(itemId: string, action: ItemAction, responseText = '') {
@@ -199,6 +211,7 @@ export class LiveRepository implements AppRepository {
       p_response_text: responseText.trim() || null
     })
     ensureNoError(error, '心愿状态更新失败，请刷新后再试。')
+    await this.notify('item_updated', itemId)
   }
 
   async respondToInteraction(itemId: string, response: InteractionResponse) {
@@ -208,11 +221,22 @@ export class LiveRepository implements AppRepository {
       p_reply_interaction_id: response.kind === 'interaction' ? response.interactionId : null
     })
     ensureNoError(error, '回礼发送失败，请刷新后再试。')
+    await this.notify('interaction_response', itemId)
+  }
+
+  async replyToDecline(itemId: string, text: string) {
+    const { error } = await requiredClient().rpc('reply_to_decline', {
+      p_item_id: itemId,
+      p_reply_text: text.trim()
+    })
+    ensureNoError(error, '留言回复失败，请刷新后再试。')
+    await this.notify('decline_reply', itemId)
   }
 
   async cancelItem(itemId: string) {
     const { error } = await requiredClient().rpc('cancel_item', { p_item_id: itemId })
     ensureNoError(error, '撤回失败，请刷新后再试。')
+    await this.notify('item_cancelled', itemId)
   }
 
   async saveReview(itemId: string, rating: number, comment: string) {
@@ -222,6 +246,7 @@ export class LiveRepository implements AppRepository {
       p_comment: comment.trim() || null
     })
     ensureNoError(error, '评价保存失败，请稍后再试。')
+    await this.notify('review_saved', itemId)
   }
 
   async createCategory(name: string) {

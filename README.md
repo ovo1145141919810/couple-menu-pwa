@@ -18,10 +18,11 @@
 - 女朋友：分类点菜、份数、整单备注、撤回、逐道星级评价。
 - 男朋友：实时接单、制作/上菜、菜品照片、分类与归档管理。
 - 双方：发起自定义互动，可上传私人图片图标；兑现后可用一句话或另一个互动回礼，形成连续的甜蜜回应。
+- 留言：撒娇拒绝并留言后，原发起人可以再回复一句，保留完整的两轮对话。
 - 氛围：温柔奶油粉纯色背景、逐字页面标题和按钮点击火花。
 - 回忆：已上菜、已兑现互动与评价自动组成时间线。
 - 作品集 Demo：一键切换双角色，使用独立假数据，完全不访问生产数据。
-- PWA：手机优先、可添加到桌面、前台实时通知、减少动态效果支持。
+- PWA：手机优先、可添加到桌面、前台实时同步，并支持网页关闭后的系统消息推送。
 
 ## 隐私优先的架构
 
@@ -33,6 +34,8 @@ flowchart LR
   Auth --> RLS["Postgres · RLS + atomic RPC"]
   RLS --> Storage["Private dish photos"]
   RLS --> Realtime["Foreground realtime updates"]
+  RLS --> Edge["Edge Function · authenticated Web Push"]
+  Edge --> Device["Background phone notification"]
 ```
 
 公开仓库中没有真实邮箱、UUID、照片、订单或密钥。Demo 与真实模式实现同一个数据接口，但使用完全隔离的数据源。详细说明见 [Architecture](docs/ARCHITECTURE.md) 和 [Privacy](PRIVACY.md)。
@@ -68,7 +71,7 @@ npm run build
 
 1. 创建免费 Supabase 项目并应用 `supabase/migrations/`。
 2. 在 Dashboard 创建两个 Auth 用户，私下绑定 girlfriend/boyfriend 角色。
-3. 给 GitHub Actions 配置项目 URL 与 Publishable Key 两个 Variables。
+3. 给 GitHub Actions 配置项目 URL、Publishable Key 与公开 VAPID Key。
 4. 将 GitHub Pages Source 设为 GitHub Actions，推送 `main` 自动发布。
 
 ## English summary
@@ -79,7 +82,6 @@ The public portfolio Demo uses fictional browser-local data. Production records 
 
 ## Roadmap
 
-- Optional system push notifications after the core two-person workflow proves stable.
 - A user-triggered encrypted memory export for long-term personal backup.
 - More install icons and a custom domain if the project graduates from the free tier.
 

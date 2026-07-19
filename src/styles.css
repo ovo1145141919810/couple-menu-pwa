@@ -229,6 +229,19 @@ h1, h2, h3, p { margin-top: 0; }
 .response-interaction-grid strong { overflow: hidden; text-overflow: ellipsis; font-size: .7rem; white-space: nowrap; }
 .response-dialog .button-large svg { width: 16px; }
 .response-later { justify-self: center; margin-top: -.45rem; color: var(--muted); }
+.push-dialog { display: grid; gap: .9rem; }
+.push-dialog .sheet-header { margin-bottom: 0; }
+.push-state { padding: .85rem; display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: .7rem; border-radius: 18px; background: #f8eeeb; }
+.push-state > span { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 15px; color: var(--wine); background: #fff; }
+.push-state > span svg { width: 22px; }
+.push-state strong { display: block; font-size: .8rem; }
+.push-state p { margin: .25rem 0 0; color: var(--muted); font-size: .66rem; line-height: 1.55; }
+.push-enabled { background: #e8f2e9; }
+.push-enabled > span { color: #557563; }
+.push-blocked { background: #eee9e8; }
+.install-steps { margin: 0; padding: .75rem .75rem .75rem 1.8rem; border-radius: 15px; color: #725f58; background: #fff8ed; font-size: .69rem; line-height: 1.8; }
+.push-dialog .button-large svg { width: 17px; }
+.push-privacy { margin: 0; color: #a18d90; font-size: .58rem; line-height: 1.55; text-align: center; }
 .star-picker { display: flex; justify-content: center; gap: .35rem; margin: 1.2rem 0; }
 .star-picker button { border: 0; padding: .1rem; color: #e4d8d2; background: transparent; cursor: pointer; }
 .star-picker button.active { color: #e9a645; }
@@ -258,6 +271,10 @@ h1, h2, h3, p { margin-top: 0; }
 .wish-note { margin: .65rem 0 0; padding: .55rem .65rem; display: flex; gap: .4rem; align-items: flex-start; border-radius: 12px; color: #745e62; background: #fbf3ef; font-size: .68rem; line-height: 1.5; }
 .wish-note svg { flex: 0 0 auto; width: 14px; }
 .response-bubble { margin: .55rem 0 0; color: var(--wine); font-family: Georgia, "Songti SC", serif; font-size: .78rem; }
+.conversation-bubble { margin-top: .55rem; padding: .55rem .65rem; border-radius: 13px 13px 13px 4px; color: var(--wine); background: #fae9e8; }
+.conversation-bubble.sender-reply { margin-left: 1.2rem; border-radius: 13px 13px 4px 13px; background: #f4eee6; }
+.conversation-bubble span { display: block; margin-bottom: .18rem; color: #a18186; font-size: .55rem; font-weight: 800; }
+.conversation-bubble p { margin: 0; font-family: Georgia, "Songti SC", serif; font-size: .76rem; line-height: 1.5; }
 .reply-origin { margin: .55rem 0 0; display: flex; align-items: center; gap: .3rem; color: #9a737a; font-size: .63rem; }
 .reply-origin svg { width: 13px; }
 .wish-meta { display: flex; align-items: center; gap: .3rem; margin-top: .55rem; color: #ac969a; font-size: .58rem; }
