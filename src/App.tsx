@@ -6,6 +6,7 @@ import { DemoRepository, resetDemoData } from './data/demoRepository'
 import { LiveRepository } from './data/liveRepository'
 import { isSupabaseConfigured, supabase, supabaseConfigurationError } from './lib/supabase'
 import { userFacingError } from './lib/errors'
+import { isNotificationOpenMessage } from './lib/notificationNavigation'
 import type { Profile, Role } from './types'
 import { AppShell } from './components/AppShell'
 import ClickSpark from './components/effects/ClickSpark'
@@ -185,9 +186,25 @@ function LiveApp() {
   )
 }
 
+function NotificationNavigationBridge() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const openNotification = (event: MessageEvent) => {
+      if (isNotificationOpenMessage(event.data)) navigate('/app')
+    }
+    navigator.serviceWorker.addEventListener('message', openNotification)
+    return () => navigator.serviceWorker.removeEventListener('message', openNotification)
+  }, [navigate])
+
+  return null
+}
+
 export default function App() {
   return (
     <HashRouter>
+      <NotificationNavigationBridge />
       <ClickSpark sparkColor="#d96b7e" sparkSize={11} sparkRadius={21} sparkCount={9} duration={430} extraScale={1.1} buttonOnly>
         <Routes>
           <Route path="/" element={<Landing />} />
