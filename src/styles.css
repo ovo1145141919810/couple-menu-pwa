@@ -344,6 +344,18 @@ h1, h2, h3, p { margin-top: 0; }
 .review-preview { margin-top: .55rem; padding: .55rem; border-radius: 12px; background: #fff8df; }
 .review-preview span, .memory-review span { color: #d99737; font-size: .72rem; letter-spacing: .05em; }
 .review-preview p { margin: .25rem 0 0; color: #755f55; font-size: .66rem; line-height: 1.5; }
+.review-photo { width: 100%; max-height: 180px; margin-top: .5rem; border-radius: 10px; object-fit: cover; }
+.review-photo-picker { min-height: 124px; margin: .15rem 0 .4rem; display: grid; place-items: center; overflow: hidden; border: 1px dashed #dabdbd; border-radius: 18px; color: var(--wine); background: #fff6f2; cursor: pointer; }
+.review-photo-picker input { display: none; }
+.review-photo-empty { display: grid; justify-items: center; gap: .25rem; padding: 1rem; text-align: center; }
+.review-photo-empty svg { width: 28px; }
+.review-photo-empty strong { font-size: .76rem; }
+.review-photo-empty small { color: var(--muted); font-size: .6rem; }
+.review-photo-preview { position: relative; width: 100%; }
+.review-photo-preview img { display: block; width: 100%; height: 170px; object-fit: cover; }
+.review-photo-preview span { position: absolute; right: .5rem; bottom: .5rem; display: flex; align-items: center; gap: .3rem; padding: .4rem .55rem; border-radius: 999px; color: #fff; background: rgba(69, 35, 44, .78); backdrop-filter: blur(6px); font-size: .58rem; font-weight: 750; }
+.review-photo-preview span svg { width: 14px; height: 14px; }
+.review-photo-reset { justify-self: center; margin: -.1rem 0 .25rem; }
 
 /* Management */
 .segmented-control { display: grid; grid-template-columns: 1fr 1fr; padding: .25rem; border-radius: 15px; background: #eee4e0; margin-bottom: .85rem; }
@@ -393,6 +405,7 @@ h1, h2, h3, p { margin-top: 0; }
 .memory-copy h3 { margin: 0; font-size: .85rem; }
 .memory-review { margin-top: .35rem; }
 .memory-review blockquote { margin: .2rem 0 0; color: #775f64; font-family: Georgia, "Songti SC", serif; font-size: .67rem; line-height: 1.4; }
+.memory-review-photo { width: 100%; max-height: 190px; margin-top: .55rem; border-radius: 12px; object-fit: cover; }
 .fulfilled-label { margin-top: .45rem; display: flex; align-items: center; gap: .3rem; color: var(--rose); font-size: .64rem; font-weight: 750; }
 
 @media (min-width: 700px) {

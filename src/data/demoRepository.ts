@@ -210,7 +210,7 @@ export class DemoRepository implements AppRepository {
     writeDemoData(snapshot)
   }
 
-  async saveReview(itemId: string, rating: number, comment: string) {
+  async saveReview(itemId: string, rating: number, comment: string, photo?: File | null) {
     if (!Number.isInteger(rating) || rating < 1 || rating > 5) throw new Error('请选择 1–5 星。')
     const snapshot = readDemoData()
     const actor = this.profile(snapshot)
@@ -220,9 +220,11 @@ export class DemoRepository implements AppRepository {
       throw new Error('只有女朋友可以评价自己点过且已经上桌的菜。')
     }
     const existing = snapshot.reviews.find((review) => review.itemId === itemId)
+    const photoUrl = photo ? await blobToDataUrl(await compressImage(photo, 1200, 0.8)) : null
     if (existing) {
       existing.rating = rating
       existing.comment = comment.trim() || null
+      if (photoUrl) existing.photoUrl = photoUrl
       existing.updatedAt = new Date().toISOString()
     } else {
       snapshot.reviews.push({
@@ -231,6 +233,7 @@ export class DemoRepository implements AppRepository {
         reviewerId: actor.id,
         rating,
         comment: comment.trim() || null,
+        photoUrl,
         updatedAt: new Date().toISOString()
       })
     }

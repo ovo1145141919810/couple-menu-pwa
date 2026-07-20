@@ -48,6 +48,18 @@ describe('portfolio entry points', () => {
     expect(saveButton.closest('.interaction-layout-save-bar')).toBeInTheDocument()
   })
 
+  it('offers an optional experience photo while reviewing a served dish', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /心愿/ }))
+    fireEvent.click(screen.getByRole('button', { name: /我发出的心愿/ }))
+    fireEvent.click(screen.getByRole('button', { name: /修改评价/ }))
+
+    expect(screen.getByRole('heading', { name: /评价「可乐鸡翅」/ })).toBeInTheDocument()
+    expect(screen.getByLabelText('上传点评照片')).toHaveAttribute('accept', 'image/*')
+    expect(screen.getByText('添加本次体验照片')).toBeInTheDocument()
+  })
+
   it('organizes wishes into three collapsible navigation sections', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))

@@ -1,5 +1,5 @@
-import { useMemo, useState, type CSSProperties } from 'react'
-import { Ban, Check, ChefHat, ChevronDown, Clock3, Heart, History, Inbox, MessageCircleHeart, Reply, Send, Star, Utensils, X } from 'lucide-react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Ban, Check, ChefHat, ChevronDown, Clock3, Heart, History, ImagePlus, Inbox, MessageCircleHeart, Reply, Send, Star, Utensils, X } from 'lucide-react'
 import { allowedActions, deriveWishlistState, statusLabel } from '../domain'
 import type { AppRepository, AppSnapshot, InteractionOption, InteractionResponse, ItemAction, Profile, Review, WishlistItem } from '../types'
 import type { Execute } from './AppShell'
@@ -17,10 +17,18 @@ export function ReviewDialog({
   item: WishlistItem
   existing?: Review
   onClose: () => void
-  onSave: (rating: number, comment: string) => Promise<void>
+  onSave: (rating: number, comment: string, photo?: File | null) => Promise<void>
 }) {
   const [rating, setRating] = useState(existing?.rating || 5)
   const [comment, setComment] = useState(existing?.comment || '')
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [preview, setPreview] = useState('')
+  const displayedPhoto = preview || existing?.photoUrl || ''
+
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview)
+  }, [preview])
+
   return (
     <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="dialog-card review-dialog" role="dialog" aria-modal="true">
@@ -34,7 +42,28 @@ export function ReviewDialog({
           ))}
         </div>
         <label className="field-label">想对厨师说<input value={comment} maxLength={180} onChange={(event) => setComment(event.target.value)} placeholder="比如：下次还想吃，也想夸夸你～" /></label>
-        <button className="button button-primary button-large" onClick={() => void onSave(rating, comment)}>保存这份喜欢</button>
+        <label className={`review-photo-picker ${displayedPhoto ? 'has-photo' : ''}`}>
+          {displayedPhoto ? (
+            <div className="review-photo-preview">
+              <img src={displayedPhoto} alt="点评照片预览" />
+              <span><ImagePlus /> {photo ? '已选择新照片，点击可更换' : '点击更换体验照片'}</span>
+            </div>
+          ) : (
+            <div className="review-photo-empty"><ImagePlus /><strong>添加本次体验照片</strong><small>选填 · 上传前会自动压缩</small></div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            aria-label="上传点评照片"
+            onChange={(event) => {
+              const file = event.target.files?.[0] || null
+              setPhoto(file)
+              setPreview(file ? URL.createObjectURL(file) : '')
+            }}
+          />
+        </label>
+        {photo && <button className="text-action review-photo-reset" onClick={() => { setPhoto(null); setPreview('') }}>取消更换照片</button>}
+        <button className="button button-primary button-large" onClick={() => void onSave(rating, comment, photo)}>保存这份喜欢</button>
       </section>
     </div>
   )
@@ -183,7 +212,7 @@ function ItemCard({
         {item.responseText && <div className="conversation-bubble"><span>{item.status === 'declined' ? (direction === 'incoming' ? '我的留言' : '对方留言') : '甜蜜回应'}</span><p>“{item.responseText}”</p></div>}
         {item.senderReplyText && <div className="conversation-bubble sender-reply"><span>{direction === 'outgoing' ? '我的回复' : '对方回复'}</span><p>“{item.senderReplyText}”</p></div>}
         {replyItem && <p className="response-bubble">{direction === 'incoming' ? '你用' : '对方用'}「{replyItem.nameSnapshot}」回应了这份互动 · {statusLabel[replyItem.status]}</p>}
-        {review && <div className="review-preview"><span>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>{review.comment && <p>{review.comment}</p>}</div>}
+        {review && <div className="review-preview"><span>{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>{review.comment && <p>{review.comment}</p>}{review.photoUrl && <img className="review-photo" src={review.photoUrl} alt={`${item.nameSnapshot}的点评照片`} loading="lazy" />}</div>}
         <div className="wish-meta"><Clock3 /> {new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(item.createdAt))}</div>
         {actions.length > 0 && (
           <div className="wish-actions">
@@ -287,7 +316,7 @@ export function WishesPage({ snapshot, profile, repository, execute }: { snapsho
       {declineItem && <DeclineDialog onClose={() => setDeclineItem(null)} onSubmit={async (reply) => { const ok = await execute(() => repository.transitionItem(declineItem.id, 'decline', reply), '已经把回复送过去了'); if (ok) setDeclineItem(null) }} />}
       {messageReplyItem && <MessageReplyDialog item={messageReplyItem} onClose={() => setMessageReplyItem(null)} onSubmit={async (reply) => { const ok = await execute(() => repository.replyToMessage(messageReplyItem.id, reply), '回复已经送到对方那里啦 💌'); if (ok) setMessageReplyItem(null) }} />}
       {responseItem && <ResponseDialog item={responseItem} interactions={snapshot.interactions.filter((interaction) => !interaction.archivedAt)} onClose={() => setResponseItem(null)} onSubmit={async (response) => { const ok = await execute(() => repository.respondToInteraction(responseItem.id, response), response.kind === 'text' ? '想说的话已经送到啦 💌' : '回赠的互动已经送出啦 💗'); if (ok) setResponseItem(null) }} />}
-      {reviewItem && <ReviewDialog item={reviewItem} existing={snapshot.reviews.find((review) => review.itemId === reviewItem.id)} onClose={() => setReviewItem(null)} onSave={async (rating, comment) => { const ok = await execute(() => repository.saveReview(reviewItem.id, rating, comment), '喜欢已经被认真记下 ⭐'); if (ok) setReviewItem(null) }} />}
+      {reviewItem && <ReviewDialog item={reviewItem} existing={snapshot.reviews.find((review) => review.itemId === reviewItem.id)} onClose={() => setReviewItem(null)} onSave={async (rating, comment, photo) => { const ok = await execute(() => repository.saveReview(reviewItem.id, rating, comment, photo), '喜欢和照片已经被认真记下 ⭐'); if (ok) setReviewItem(null) }} />}
     </section>
   )
 }

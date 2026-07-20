@@ -137,6 +137,23 @@ export class LiveRepository implements AppRepository {
         }
       })
     )
+    const mappedReviews: Review[] = await Promise.all(
+      ((reviews.data || []) as any[]).map(async (row) => {
+        const photoUrl = row.photo_path
+          ? (await client.storage.from('review-images').createSignedUrl(row.photo_path, 60 * 60)).data?.signedUrl || null
+          : null
+        return {
+          id: row.id,
+          itemId: row.item_id,
+          reviewerId: row.reviewer_id,
+          rating: row.rating,
+          comment: row.comment,
+          photoPath: row.photo_path,
+          photoUrl,
+          updatedAt: row.updated_at
+        }
+      })
+    )
 
     return {
       profiles: ((profiles.data || []) as any[]).map(
@@ -160,16 +177,7 @@ export class LiveRepository implements AppRepository {
         })
       ),
       items: mappedItems,
-      reviews: ((reviews.data || []) as any[]).map(
-        (row): Review => ({
-          id: row.id,
-          itemId: row.item_id,
-          reviewerId: row.reviewer_id,
-          rating: row.rating,
-          comment: row.comment,
-          updatedAt: row.updated_at
-        })
-      )
+      reviews: mappedReviews
     }
   }
 
@@ -247,13 +255,24 @@ export class LiveRepository implements AppRepository {
     await this.notify('item_cancelled', itemId)
   }
 
-  async saveReview(itemId: string, rating: number, comment: string) {
-    const { error } = await requiredClient().rpc('save_review', {
+  async saveReview(itemId: string, rating: number, comment: string, photo?: File | null) {
+    const client = requiredClient()
+    const existing = await client.from('reviews').select('photo_path').eq('item_id', itemId).maybeSingle()
+    ensureNoError(existing.error, '无法读取原评价，请刷新后再试。')
+    const photoPath = photo ? await this.uploadReviewPhoto(photo) : null
+    const { error } = await client.rpc('save_review', {
       p_item_id: itemId,
       p_rating: rating,
-      p_comment: comment.trim() || null
+      p_comment: comment.trim() || null,
+      p_photo_path: photoPath
     })
-    ensureNoError(error, '评价保存失败，请稍后再试。')
+    if (error) {
+      await this.removeUploadedFile('review-images', photoPath)
+      ensureNoError(error, '评价保存失败，请稍后再试。')
+    }
+    if (photoPath && existing.data?.photo_path && existing.data.photo_path !== photoPath) {
+      await this.removeUploadedFile('review-images', existing.data.photo_path)
+    }
     await this.notify('review_saved', itemId)
   }
 
@@ -301,7 +320,19 @@ export class LiveRepository implements AppRepository {
     return path
   }
 
-  private async removeUploadedFile(bucket: 'dish-images' | 'interaction-icons', path: string | null) {
+  private async uploadReviewPhoto(file: File): Promise<string> {
+    const client = requiredClient()
+    const blob = await compressImage(file)
+    const path = `${this.profile.id}/${crypto.randomUUID()}.webp`
+    const { error } = await client.storage.from('review-images').upload(path, blob, {
+      contentType: 'image/webp',
+      upsert: false
+    })
+    ensureNoError(error, '点评照片上传失败，请检查网络后再试。')
+    return path
+  }
+
+  private async removeUploadedFile(bucket: 'dish-images' | 'interaction-icons' | 'review-images', path: string | null) {
     if (!path) return
     try {
       await requiredClient().storage.from(bucket).remove([path])

@@ -55,7 +55,7 @@ export function MemoriesPage({ snapshot, profile, repository, execute }: { snaps
                     <p>{memory.kind === 'dish' ? `${sender?.displayName || '对方'} 点过的味道` : `${sender?.displayName || '对方'} 发起的甜蜜`}</p>
                     <h3>{memory.nameSnapshot}{memory.kind === 'dish' && memory.quantity > 1 ? ` × ${memory.quantity}` : ''}</h3>
                     {memory.review ? (
-                      <div className="memory-review"><span>{'★'.repeat(memory.review.rating)}{'☆'.repeat(5 - memory.review.rating)}</span>{memory.review.comment && <blockquote>“{memory.review.comment}”</blockquote>}</div>
+                      <div className="memory-review"><span>{'★'.repeat(memory.review.rating)}{'☆'.repeat(5 - memory.review.rating)}</span>{memory.review.comment && <blockquote>“{memory.review.comment}”</blockquote>}{memory.review.photoUrl && <img className="memory-review-photo" src={memory.review.photoUrl} alt={`${memory.nameSnapshot}的点评照片`} loading="lazy" />}</div>
                     ) : memory.kind === 'interaction' ? (
                       <div className="fulfilled-label"><Heart size={14} fill="currentColor" /> 已经好好兑现</div>
                     ) : canReview ? (
@@ -76,8 +76,8 @@ export function MemoriesPage({ snapshot, profile, repository, execute }: { snaps
           item={reviewItem}
           existing={snapshot.reviews.find((review) => review.itemId === reviewItem.id)}
           onClose={() => setReviewItem(null)}
-          onSave={async (rating, comment) => {
-            const ok = await execute(() => repository.saveReview(reviewItem.id, rating, comment), '喜欢已经被认真记下 ⭐')
+          onSave={async (rating, comment, photo) => {
+            const ok = await execute(() => repository.saveReview(reviewItem.id, rating, comment, photo), '喜欢和照片已经被认真记下 ⭐')
             if (ok) setReviewItem(null)
           }}
         />

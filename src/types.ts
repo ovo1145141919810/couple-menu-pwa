@@ -82,6 +82,8 @@ export interface Review {
   reviewerId: string
   rating: number
   comment?: string | null
+  photoPath?: string | null
+  photoUrl?: string | null
   updatedAt: string
 }
 
@@ -118,7 +120,7 @@ export interface AppRepository {
   respondToInteraction(itemId: string, response: InteractionResponse): Promise<void>
   replyToMessage(itemId: string, text: string): Promise<void>
   cancelItem(itemId: string): Promise<void>
-  saveReview(itemId: string, rating: number, comment: string): Promise<void>
+  saveReview(itemId: string, rating: number, comment: string, photo?: File | null): Promise<void>
   createCategory(name: string): Promise<void>
   renameCategory(id: string, name: string): Promise<void>
   moveCategory(id: string, direction: -1 | 1): Promise<void>
