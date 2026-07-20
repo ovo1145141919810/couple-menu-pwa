@@ -279,7 +279,9 @@ function InteractionLayoutDialog({
             )
           })}
         </div>
-        <button className="button button-primary button-large" onClick={() => void execute(() => repository.saveInteractionLayout(draftRef.current), '互动排版已经保存').then((ok) => ok && onClose())}><Check /> 保存新的排版</button>
+        <div className="interaction-layout-save-bar">
+          <button className="button button-primary button-large" onClick={() => void execute(() => repository.saveInteractionLayout(draftRef.current), '互动排版已经保存').then((ok) => ok && onClose())}><Check /> 保存新的排版</button>
+        </div>
       </section>
     </div>
   )

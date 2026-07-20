@@ -110,7 +110,7 @@ h1, h2, h3, p { margin-top: 0; }
 .header-actions { flex: 0 0 auto; display: flex; align-items: center; gap: .45rem; }
 .role-switch { border: 1px solid #ead6d4; color: var(--wine); background: #fff; border-radius: 999px; min-height: 38px; padding: 0 .7rem; font-size: .7rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
 .demo-ribbon { position: relative; z-index: 4; display: flex; justify-content: center; align-items: center; gap: .4rem; padding: .45rem 1rem; color: #8c6470; background: rgba(248,227,225,.91); backdrop-filter: blur(8px); font-size: .66rem; font-weight: 700; }
-.app-content { position: relative; z-index: 2; padding: 1.05rem 1rem 2rem; }
+.app-content { position: relative; padding: 1.05rem 1rem 2rem; }
 .bottom-nav { position: fixed; z-index: 40; bottom: 0; left: 50%; transform: translateX(-50%); width: min(100%, 480px); display: grid; grid-template-columns: repeat(4, 1fr); padding: .55rem .55rem max(.5rem, env(safe-area-inset-bottom)); background: rgba(255,253,251,.95); border-top: 1px solid var(--line); box-shadow: 0 -10px 30px rgba(79, 38, 49, .08); backdrop-filter: blur(18px); }
 .bottom-nav button { min-height: 55px; border: 0; border-radius: 16px; background: transparent; color: #a58e92; display: grid; place-items: center; align-content: center; gap: .18rem; font-size: .62rem; font-weight: 750; cursor: pointer; }
 .bottom-nav button.active { color: var(--wine); background: #faece9; }
@@ -193,6 +193,15 @@ h1, h2, h3, p { margin-top: 0; }
 .interaction-category-row .manage-tools button:disabled { opacity: .34; cursor: not-allowed; }
 .interaction-layout-sheet { display: grid; gap: .8rem; }
 .interaction-layout-sheet .sheet-header, .interaction-layout-sheet .dialog-copy { margin-bottom: 0; }
+.interaction-layout-save-bar {
+  position: sticky;
+  z-index: 6;
+  bottom: 0;
+  margin: 0 -1rem;
+  padding: .75rem 1rem calc(.75rem + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(255, 253, 251, 0), rgba(255, 253, 251, .96) 22%, var(--paper) 45%);
+}
+.interaction-layout-save-bar .button { width: 100%; }
 .interaction-layout-list { display: grid; gap: .8rem; padding-bottom: .25rem; }
 .layout-category { padding: .65rem; border: 1px solid #ead9d5; border-radius: 19px; background: #fffaf7; }
 .layout-category > header { display: flex; align-items: center; justify-content: space-between; padding: 0 .2rem .55rem; }

@@ -38,6 +38,16 @@ describe('portfolio entry points', () => {
     expect(screen.getByText(/你们两个人都可以创建/)).toBeInTheDocument()
   })
 
+  it('keeps the interaction layout save action in its own sticky bar', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '想要' }))
+    fireEvent.click(screen.getByRole('button', { name: /调整排版/ }))
+
+    const saveButton = screen.getByRole('button', { name: /保存新的排版/ })
+    expect(saveButton.closest('.interaction-layout-save-bar')).toBeInTheDocument()
+  })
+
   it('organizes wishes into three collapsible navigation sections', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))
