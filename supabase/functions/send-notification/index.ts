@@ -3,7 +3,7 @@ import webpush from 'npm:web-push@3.6.7'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info, x-supabase-api-version',
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
@@ -11,9 +11,12 @@ type NotificationEvent =
   | 'wishlist_created'
   | 'item_updated'
   | 'interaction_response'
-  | 'decline_reply'
+  | 'message_reply'
   | 'item_cancelled'
   | 'review_saved'
+  | 'dish_created'
+  | 'interaction_created'
+  | 'test_push'
 
 type Notice = { targetId: string; title: string; body: string; tag: string }
 
@@ -36,6 +39,40 @@ async function loadItem(admin: SupabaseClient, itemId: string) {
 }
 
 async function buildNotice(admin: SupabaseClient, actorId: string, event: NotificationEvent, resourceId: string): Promise<Notice> {
+  if (event === 'dish_created') {
+    const [profileResult, dishResult, targetResult] = await Promise.all([
+      admin.from('profiles').select('role').eq('id', actorId).single(),
+      admin.from('dishes').select('name, archived_at').eq('id', resourceId).single(),
+      admin.from('profiles').select('id').neq('id', actorId).single()
+    ])
+    if (profileResult.data?.role !== 'boyfriend' || dishResult.error || !dishResult.data || dishResult.data.archived_at || !targetResult.data) {
+      throw new Error('Only the boyfriend may notify a new dish')
+    }
+    return {
+      targetId: targetResult.data.id,
+      title: '菜单上新啦 🍳',
+      body: `新菜「${dishResult.data.name}」已经加入私房菜单`,
+      tag: `dish-created-${resourceId}`
+    }
+  }
+
+  if (event === 'interaction_created') {
+    const [interactionResult, targetResult] = await Promise.all([
+      admin.from('interaction_options').select('name, emoji, creator_id, is_system, archived_at').eq('id', resourceId).single(),
+      admin.from('profiles').select('id').neq('id', actorId).single()
+    ])
+    const interaction = interactionResult.data
+    if (interactionResult.error || !interaction || interaction.creator_id !== actorId || interaction.is_system || interaction.archived_at || !targetResult.data) {
+      throw new Error('Only the creator may notify a new interaction')
+    }
+    return {
+      targetId: targetResult.data.id,
+      title: '新增亲密互动 💞',
+      body: `${interaction.emoji || '💗'}「${interaction.name}」已经加入互动清单`,
+      tag: `interaction-created-${resourceId}`
+    }
+  }
+
   if (event === 'wishlist_created') {
     const wishlistResult = await admin
       .from('wishlists')
@@ -91,15 +128,15 @@ async function buildNotice(admin: SupabaseClient, actorId: string, event: Notifi
     return { targetId: wishlist.sender_id, title: '收到甜蜜回礼 💞', body, tag: `response-${resourceId}` }
   }
 
-  if (event === 'decline_reply') {
-    if (wishlist.sender_id !== actorId || item.status !== 'declined' || !item.sender_reply_text) {
+  if (event === 'message_reply') {
+    if (wishlist.sender_id !== actorId || !['declined', 'fulfilled'].includes(item.status) || !item.sender_reply_text) {
       throw new Error('Only the sender may notify this reply')
     }
     return {
       targetId: wishlist.receiver_id,
       title: '对方回复了你的留言 💌',
       body: `“${item.sender_reply_text}”`,
-      tag: `decline-reply-${resourceId}`
+      tag: `message-reply-${resourceId}`
     }
   }
 
@@ -152,13 +189,21 @@ Deno.serve(async (request: Request) => {
     if (userResult.error || !userResult.data.user) return json({ error: 'Invalid login session' }, 401)
 
     const payload = await request.json() as { event?: NotificationEvent; resourceId?: string }
-    if (!payload.event || !payload.resourceId || !/^[0-9a-f-]{36}$/i.test(payload.resourceId)) {
+    const isTest = payload.event === 'test_push'
+    if (!payload.event || (!isTest && (!payload.resourceId || !/^[0-9a-f-]{36}$/i.test(payload.resourceId)))) {
       return json({ error: 'Invalid notification request' }, 400)
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
-    const notice = await buildNotice(admin, userResult.data.user.id, payload.event, payload.resourceId)
-    if (notice.targetId === userResult.data.user.id) throw new Error('Cannot notify yourself')
+    const notice = isTest
+      ? {
+          targetId: userResult.data.user.id,
+          title: '测试通知成功啦 💗',
+          body: '以后即使没有打开私房菜单，也能收到对方的消息。',
+          tag: `test-${userResult.data.user.id}`
+        }
+      : await buildNotice(admin, userResult.data.user.id, payload.event, payload.resourceId!)
+    if (!isTest && notice.targetId === userResult.data.user.id) throw new Error('Cannot notify yourself')
     const subscriptionsResult = await admin
       .from('push_subscriptions')
       .select('endpoint, p256dh, auth')
@@ -167,6 +212,7 @@ Deno.serve(async (request: Request) => {
 
     webpush.setVapidDetails(subject, publicKey, privateKey)
     let delivered = 0
+    let failed = 0
     await Promise.all((subscriptionsResult.data || []).map(async (subscription) => {
       try {
         await webpush.sendNotification(
@@ -176,14 +222,21 @@ Deno.serve(async (request: Request) => {
         )
         delivered += 1
       } catch (caught) {
+        failed += 1
         const statusCode = (caught as { statusCode?: number }).statusCode
+        console.error('Web Push delivery failed', { statusCode: statusCode || 'unknown' })
         if (statusCode === 404 || statusCode === 410) {
           await admin.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint)
         }
       }
     }))
 
-    return json({ delivered })
+    const subscriptions = (subscriptionsResult.data || []).length
+    console.log('Web Push result', { event: payload.event, subscriptions, delivered, failed })
+    if (isTest && delivered === 0) {
+      return json({ error: subscriptions === 0 ? 'No subscription is registered for this account' : 'The push service rejected this subscription', subscriptions, failed }, 502)
+    }
+    return json({ delivered, subscriptions, failed })
   } catch (caught) {
     console.error(caught)
     return json({ error: 'Notification could not be sent' }, 400)

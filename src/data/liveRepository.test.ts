@@ -3,6 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => {
   const rpc = vi.fn()
   const invoke = vi.fn()
+  const single = vi.fn()
+  const select = vi.fn(() => ({ single }))
+  const insert = vi.fn(() => ({ select }))
+  const from = vi.fn(() => ({ insert }))
   const removeChannel = vi.fn()
   const channel = {
     on: vi.fn(),
@@ -10,11 +14,12 @@ const mocks = vi.hoisted(() => {
   }
   const client = {
     rpc,
+    from,
     functions: { invoke },
     removeChannel,
     channel: vi.fn(() => channel)
   }
-  return { rpc, invoke, removeChannel, channel, client }
+  return { rpc, invoke, single, select, insert, from, removeChannel, channel, client }
 })
 
 vi.mock('../lib/supabase', () => ({ supabase: mocks.client }))
@@ -23,12 +28,14 @@ import { LiveRepository } from './liveRepository'
 import type { Profile } from '../types'
 
 const girlfriend: Profile = { id: 'girlfriend-id', role: 'girlfriend', displayName: '小桃' }
+const boyfriend: Profile = { id: 'boyfriend-id', role: 'boyfriend', displayName: '小胡' }
 
 describe('LiveRepository production writes', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.rpc.mockResolvedValue({ error: null })
     mocks.invoke.mockResolvedValue({ error: null })
+    mocks.single.mockResolvedValue({ data: { id: 'created-id' }, error: null })
     mocks.channel.on.mockImplementation(() => mocks.channel)
     mocks.channel.subscribe.mockReturnValue(mocks.channel)
   })
@@ -79,14 +86,34 @@ describe('LiveRepository production writes', () => {
 
   it('replies to a written decline and requests an offline push', async () => {
     const repository = new LiveRepository(girlfriend)
-    await repository.replyToDecline('declined-item', '那我下次再来抱你')
+    await repository.replyToMessage('declined-item', '那我下次再来抱你')
 
-    expect(mocks.rpc).toHaveBeenCalledWith('reply_to_decline', {
+    expect(mocks.rpc).toHaveBeenCalledWith('reply_to_interaction_message', {
       p_item_id: 'declined-item',
       p_reply_text: '那我下次再来抱你'
     })
     expect(mocks.invoke).toHaveBeenCalledWith('send-notification', {
-      body: { event: 'decline_reply', resourceId: 'declined-item' }
+      body: { event: 'message_reply', resourceId: 'declined-item' }
+    })
+  })
+
+  it('notifies the other account when a dish is added', async () => {
+    const repository = new LiveRepository(boyfriend)
+    await repository.createDish({ name: '爱心蛋包饭', categoryId: 'category-id' })
+
+    expect(mocks.from).toHaveBeenCalledWith('dishes')
+    expect(mocks.invoke).toHaveBeenCalledWith('send-notification', {
+      body: { event: 'dish_created', resourceId: 'created-id' }
+    })
+  })
+
+  it('notifies the other account when a custom interaction is added', async () => {
+    const repository = new LiveRepository(girlfriend)
+    await repository.createInteraction({ name: '贴贴十分钟', emoji: '💞', color: '#f6d8df' })
+
+    expect(mocks.from).toHaveBeenCalledWith('interaction_options')
+    expect(mocks.invoke).toHaveBeenCalledWith('send-notification', {
+      body: { event: 'interaction_created', resourceId: 'created-id' }
     })
   })
 })

@@ -90,6 +90,7 @@ h1, h2, h3, p { margin-top: 0; }
 .field-label textarea { min-height: 92px; resize: vertical; line-height: 1.5; }
 .field-label span { color: #b29ca0; font-weight: 500; }
 .form-error { margin: 0; padding: .7rem; border-radius: 12px; background: #fff0ef; color: #a03e51; font-size: .8rem; }
+.form-success { margin: 0; padding: .7rem; border-radius: 12px; background: #edf8f1; color: #397153; font-size: .8rem; }
 .auth-hint { display: flex; align-items: center; gap: .4rem; margin: 1rem 0 0; color: #9b8589; font-size: .72rem; line-height: 1.5; }
 .setup-panel { padding: 1rem; border: 1px solid #f0d9d7; border-radius: 18px; background: #fff8f5; }
 .setup-panel p { color: var(--muted); line-height: 1.6; font-size: .85rem; }

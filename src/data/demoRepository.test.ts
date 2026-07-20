@@ -57,7 +57,7 @@ describe('privacy-safe demo repository', () => {
     const repo = new DemoRepository(() => role)
     await repo.transitionItem('item-pending-kiss', 'decline', '今天先欠着，明天补给你')
     role = 'girlfriend'
-    await repo.replyToDecline('item-pending-kiss', '好呀，说定了！')
+    await repo.replyToMessage('item-pending-kiss', '好呀，说定了！')
 
     const item = readDemoData().items.find((entry) => entry.id === 'item-pending-kiss')
     expect(item).toMatchObject({
@@ -65,7 +65,20 @@ describe('privacy-safe demo repository', () => {
       responseText: '今天先欠着，明天补给你',
       senderReplyText: '好呀，说定了！'
     })
-    await expect(repo.replyToDecline('item-pending-kiss', '第二次回复')).rejects.toThrow('已经回复过')
+    await expect(repo.replyToMessage('item-pending-kiss', '第二次回复')).rejects.toThrow('已经回复过')
+  })
+
+  it('lets the sender reply to a fulfilled interaction text response', async () => {
+    let role: 'girlfriend' | 'boyfriend' = 'boyfriend'
+    const repo = new DemoRepository(() => role)
+    await repo.respondToInteraction('item-memory-hug', { kind: 'text', text: '你也超级可爱' })
+    role = 'girlfriend'
+    await repo.replyToMessage('item-memory-hug', '那就再抱一下！')
+
+    expect(readDemoData().items.find((entry) => entry.id === 'item-memory-hug')).toMatchObject({
+      responseText: '你也超级可爱',
+      senderReplyText: '那就再抱一下！'
+    })
   })
 
   it('prevents the boyfriend from ordering dishes', async () => {

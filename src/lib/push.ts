@@ -77,6 +77,24 @@ export async function disablePush(): Promise<void> {
   await supabase.rpc('remove_push_subscription', { p_endpoint: endpoint })
 }
 
+export async function sendTestPush(): Promise<void> {
+  if (!supabase) throw new Error('云端服务尚未配置。')
+  if (await getPushState() !== 'enabled') throw new Error('请先在这台设备上开启消息提醒。')
+
+  const registration = await navigator.serviceWorker.ready
+  const subscription = await registration.pushManager.getSubscription()
+  if (!subscription) throw new Error('没有找到这台设备的推送订阅，请关闭提醒后重新开启。')
+
+  // Re-save before testing so an old login or a refreshed session repairs the account binding.
+  await saveSubscription(subscription)
+  const { data, error } = await supabase.functions.invoke('send-notification', {
+    body: { event: 'test_push' }
+  })
+  if (error || !data || data.delivered < 1) {
+    throw new Error('测试通知没有送达，请关闭提醒后重新开启，并检查手机的通知与专注模式设置。')
+  }
+}
+
 export async function syncExistingPushSubscription(): Promise<void> {
   try {
     const badgeNavigator = navigator as Navigator & { clearAppBadge?: () => Promise<void> }

@@ -224,13 +224,13 @@ export class LiveRepository implements AppRepository {
     await this.notify('interaction_response', itemId)
   }
 
-  async replyToDecline(itemId: string, text: string) {
-    const { error } = await requiredClient().rpc('reply_to_decline', {
+  async replyToMessage(itemId: string, text: string) {
+    const { error } = await requiredClient().rpc('reply_to_interaction_message', {
       p_item_id: itemId,
       p_reply_text: text.trim()
     })
     ensureNoError(error, '留言回复失败，请刷新后再试。')
-    await this.notify('decline_reply', itemId)
+    await this.notify('message_reply', itemId)
   }
 
   async cancelItem(itemId: string) {
@@ -305,15 +305,20 @@ export class LiveRepository implements AppRepository {
   async createDish(input: { name: string; categoryId: string; photo?: File | null }) {
     const name = ensureName(input.name)
     const photoPath = input.photo ? await this.uploadPhoto(input.photo) : null
-    const { error } = await requiredClient().from('dishes').insert({
-      name,
-      category_id: input.categoryId,
-      photo_path: photoPath
-    })
+    const { data, error } = await requiredClient()
+      .from('dishes')
+      .insert({
+        name,
+        category_id: input.categoryId,
+        photo_path: photoPath
+      })
+      .select('id')
+      .single()
     if (error) {
       await this.removeUploadedFile('dish-images', photoPath)
       ensureNoError(error, '菜品创建失败，请稍后再试。')
     }
+    if (data?.id) await this.notify('dish_created', data.id)
   }
 
   async updateDish(input: { id: string; name: string; categoryId: string; photo?: File | null }) {
@@ -354,18 +359,23 @@ export class LiveRepository implements AppRepository {
     const emoji = ensureEmoji(input.emoji)
     const color = ensureColor(input.color)
     const iconPath = input.icon ? await this.uploadInteractionIcon(input.icon) : null
-    const { error } = await requiredClient().from('interaction_options').insert({
-      name,
-      emoji,
-      color,
-      creator_id: this.profile.id,
-      is_system: false,
-      icon_path: iconPath
-    })
+    const { data, error } = await requiredClient()
+      .from('interaction_options')
+      .insert({
+        name,
+        emoji,
+        color,
+        creator_id: this.profile.id,
+        is_system: false,
+        icon_path: iconPath
+      })
+      .select('id')
+      .single()
     if (error) {
       await this.removeUploadedFile('interaction-icons', iconPath)
       ensureNoError(error, '互动创建失败，请稍后再试。')
     }
+    if (data?.id) await this.notify('interaction_created', data.id)
   }
 
   async updateInteraction(input: { id: string; name: string; emoji: string; color: string; icon?: File | null }) {

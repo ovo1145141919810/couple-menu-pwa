@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Bell, BellOff, Check, Smartphone, X } from 'lucide-react'
-import { disablePush, enablePush, getPushState, type PushState } from '../lib/push'
+import { Bell, BellOff, Check, Send, Smartphone, X } from 'lucide-react'
+import { disablePush, enablePush, getPushState, sendTestPush, type PushState } from '../lib/push'
 
 const copy: Record<PushState, { title: string; body: string }> = {
   loading: { title: '正在检查设备', body: '稍等一下，正在确认这台手机的通知能力。' },
@@ -16,6 +16,7 @@ export function PushSettingsDialog({ onClose }: { onClose: () => void }) {
   const [state, setState] = useState<PushState>('loading')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const refresh = async () => setState(await getPushState())
   useEffect(() => {
@@ -25,12 +26,14 @@ export function PushSettingsDialog({ onClose }: { onClose: () => void }) {
   }, [])
   const current = copy[state]
 
-  const change = async (operation: () => Promise<void>) => {
+  const change = async (operation: () => Promise<void>, successMessage?: string) => {
     setBusy(true)
     setError(null)
+    setSuccess(null)
     try {
       await operation()
       await refresh()
+      if (successMessage) setSuccess(successMessage)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : '刚刚没有成功，请再试一次。')
     } finally {
@@ -48,8 +51,12 @@ export function PushSettingsDialog({ onClose }: { onClose: () => void }) {
         </div>
         {state === 'needs-install' && <ol className="install-steps"><li>在 Safari 或 Chrome 点击“分享”</li><li>选择“添加到主屏幕”</li><li>从桌面的“私房菜单”打开，再点开启</li></ol>}
         {error && <p className="form-error">{error}</p>}
+        {success && <p className="form-success">{success}</p>}
         {state === 'ready' && <button className="button button-primary button-large" disabled={busy} onClick={() => void change(enablePush)}><Bell /> {busy ? '正在开启…' : '开启消息提醒'}</button>}
-        {state === 'enabled' && <button className="button button-soft button-large" disabled={busy} onClick={() => void change(disablePush)}><BellOff /> {busy ? '正在关闭…' : '关闭这台设备的提醒'}</button>}
+        {state === 'enabled' && <>
+          <button className="button button-primary button-large" disabled={busy} onClick={() => void change(sendTestPush, '测试通知已发送，请查看手机通知栏。')}><Send /> {busy ? '正在测试…' : '发送测试通知'}</button>
+          <button className="button button-soft button-large" disabled={busy} onClick={() => void change(disablePush)}><BellOff /> 关闭这台设备的提醒</button>
+        </>}
         <p className="push-privacy">每台手机需要分别开启一次。推送订阅只用于你们两人的心愿提醒，不会公开或用于营销。</p>
       </section>
     </div>
