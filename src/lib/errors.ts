@@ -20,6 +20,10 @@ const knownMessages: Array<[string, string]> = [
   ['only a pending wish may be withdrawn', '只能撤回自己发出且尚未回应的心愿。'],
   ['dish is unavailable', '这道菜已经下架，请重新选择。'],
   ['interaction is unavailable', '这个互动已经下架，请重新选择。'],
+  ['interaction list changed', '互动清单已经变化，请刷新后重新排序。'],
+  ['interaction category is unavailable', '这个互动分类已经不可用，请刷新后重试。'],
+  ['move active interactions before archiving', '请先把这个分类里的互动拖到其他分类。'],
+  ['at least one interaction category is required', '至少需要保留一个互动分类。'],
   ['the other couple profile has not been configured', '另一个情侣账号尚未配置完成。']
 ]
 

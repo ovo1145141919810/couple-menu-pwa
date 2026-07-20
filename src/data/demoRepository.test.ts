@@ -93,10 +93,29 @@ describe('privacy-safe demo repository', () => {
   it('allows only the creator to edit a custom interaction', async () => {
     let role: 'girlfriend' | 'boyfriend' = 'boyfriend'
     const repo = new DemoRepository(() => role)
-    await repo.createInteraction({ name: '陪我看电影', emoji: '🎬', color: '#f7a7b4' })
+    await repo.createInteraction({ name: '陪我看电影', categoryId: 'love-cat-company', emoji: '🎬', color: '#f7a7b4' })
     const created = readDemoData().interactions.at(-1)!
     role = 'girlfriend'
-    await expect(repo.updateInteraction({ id: created.id, name: '越权修改', emoji: '🎬', color: '#f7a7b4' })).rejects.toThrow('只能修改')
+    await expect(repo.updateInteraction({ id: created.id, name: '越权修改', categoryId: 'love-cat-company', emoji: '🎬', color: '#f7a7b4' })).rejects.toThrow('只能修改')
+  })
+
+  it('lets both roles manage shared interaction categories and move interactions between them', async () => {
+    let role: 'girlfriend' | 'boyfriend' = 'girlfriend'
+    const repo = new DemoRepository(() => role)
+    await repo.createInteractionCategory('周末约会')
+    const createdCategory = readDemoData().interactionCategories.at(-1)!
+    await repo.renameInteractionCategory(createdCategory.id, '约会时光')
+
+    role = 'boyfriend'
+    const active = readDemoData().interactions.filter((item) => !item.archivedAt)
+    await repo.saveInteractionLayout(active.map((item) => ({
+      id: item.id,
+      categoryId: item.id === 'love-hug' ? createdCategory.id : item.categoryId
+    })))
+
+    const snapshot = readDemoData()
+    expect(snapshot.interactionCategories.find((item) => item.id === createdCategory.id)?.name).toBe('约会时光')
+    expect(snapshot.interactions.find((item) => item.id === 'love-hug')?.categoryId).toBe(createdCategory.id)
   })
 
   it('allows one editable review per served dish', async () => {

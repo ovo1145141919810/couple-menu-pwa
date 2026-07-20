@@ -4,6 +4,7 @@ import type {
   CartItem,
   Category,
   Dish,
+  InteractionCategory,
   InteractionOption,
   InteractionResponse,
   ItemAction,
@@ -58,17 +59,18 @@ export class LiveRepository implements AppRepository {
 
   async load(): Promise<AppSnapshot> {
     const client = requiredClient()
-    const [profiles, categories, dishes, interactions, wishlists, items, reviews] = await Promise.all([
+    const [profiles, categories, dishes, interactionCategories, interactions, wishlists, items, reviews] = await Promise.all([
       client.from('profiles').select('*').order('created_at'),
       client.from('categories').select('*').order('position'),
       client.from('dishes').select('*').order('position'),
-      client.from('interaction_options').select('*').order('created_at'),
+      client.from('interaction_categories').select('*').order('position'),
+      client.from('interaction_options').select('*').order('position'),
       client.from('wishlists').select('*').order('created_at', { ascending: false }),
       client.from('wishlist_items').select('*').order('created_at', { ascending: false }),
       client.from('reviews').select('*').order('updated_at', { ascending: false })
     ])
 
-    const firstError = [profiles, categories, dishes, interactions, wishlists, items, reviews].find((result) => result.error)?.error
+    const firstError = [profiles, categories, dishes, interactionCategories, interactions, wishlists, items, reviews].find((result) => result.error)?.error
     ensureNoError(firstError, '暂时无法读取云端数据，请稍后再试。')
 
     const mappedDishes: Dish[] = await Promise.all(
@@ -96,6 +98,7 @@ export class LiveRepository implements AppRepository {
           : null
         return {
           id: row.id,
+          categoryId: row.category_id,
           name: row.name,
           emoji: row.emoji,
           color: row.color,
@@ -103,6 +106,7 @@ export class LiveRepository implements AppRepository {
           creatorId: row.creator_id,
           iconPath: row.icon_path,
           iconUrl,
+          position: row.position,
           archivedAt: row.archived_at
         }
       })
@@ -140,6 +144,9 @@ export class LiveRepository implements AppRepository {
       ),
       categories: ((categories.data || []) as any[]).map(
         (row): Category => ({ id: row.id, name: row.name, position: row.position, archivedAt: row.archived_at })
+      ),
+      interactionCategories: ((interactionCategories.data || []) as any[]).map(
+        (row): InteractionCategory => ({ id: row.id, name: row.name, position: row.position, archivedAt: row.archived_at })
       ),
       dishes: mappedDishes,
       interactions: mappedInteractions,
@@ -181,6 +188,7 @@ export class LiveRepository implements AppRepository {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'dishes' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, refresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'interaction_options' }, refresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'interaction_categories' }, refresh)
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') refresh()
       })
@@ -354,7 +362,34 @@ export class LiveRepository implements AppRepository {
     ensureNoError(error, '菜品归档失败，请稍后再试。')
   }
 
-  async createInteraction(input: { name: string; emoji: string; color: string; icon?: File | null }) {
+  async createInteractionCategory(name: string) {
+    const { error } = await requiredClient().rpc('create_interaction_category', { p_name: ensureName(name) })
+    ensureNoError(error, '互动分类创建失败，请稍后再试。')
+  }
+
+  async renameInteractionCategory(id: string, name: string) {
+    const { error } = await requiredClient().rpc('rename_interaction_category', { p_category_id: id, p_name: ensureName(name) })
+    ensureNoError(error, '互动分类改名失败，请稍后再试。')
+  }
+
+  async moveInteractionCategory(id: string, direction: -1 | 1) {
+    const { error } = await requiredClient().rpc('move_interaction_category', { p_category_id: id, p_direction: direction })
+    ensureNoError(error, '互动分类排序失败，请稍后再试。')
+  }
+
+  async archiveInteractionCategory(id: string) {
+    const { error } = await requiredClient().rpc('archive_interaction_category', { p_category_id: id })
+    ensureNoError(error, '互动分类归档失败，请稍后再试。')
+  }
+
+  async saveInteractionLayout(items: Array<{ id: string; categoryId: string }>) {
+    const { error } = await requiredClient().rpc('save_interaction_layout', {
+      p_items: items.map((item) => ({ id: item.id, category_id: item.categoryId }))
+    })
+    ensureNoError(error, '互动排版保存失败，请刷新后再试。')
+  }
+
+  async createInteraction(input: { name: string; categoryId: string; emoji: string; color: string; icon?: File | null }) {
     const name = ensureName(input.name)
     const emoji = ensureEmoji(input.emoji)
     const color = ensureColor(input.color)
@@ -363,6 +398,7 @@ export class LiveRepository implements AppRepository {
       .from('interaction_options')
       .insert({
         name,
+        category_id: input.categoryId,
         emoji,
         color,
         creator_id: this.profile.id,
@@ -378,9 +414,10 @@ export class LiveRepository implements AppRepository {
     if (data?.id) await this.notify('interaction_created', data.id)
   }
 
-  async updateInteraction(input: { id: string; name: string; emoji: string; color: string; icon?: File | null }) {
+  async updateInteraction(input: { id: string; name: string; categoryId: string; emoji: string; color: string; icon?: File | null }) {
     const values: Record<string, unknown> = {
       name: ensureName(input.name),
+      category_id: input.categoryId,
       emoji: ensureEmoji(input.emoji),
       color: ensureColor(input.color)
     }

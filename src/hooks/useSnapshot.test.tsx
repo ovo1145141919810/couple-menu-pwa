@@ -6,6 +6,7 @@ import { useSnapshot } from './useSnapshot'
 const emptySnapshot = (name: string): AppSnapshot => ({
   profiles: [{ id: name, role: 'girlfriend', displayName: name }],
   categories: [],
+  interactionCategories: [],
   dishes: [],
   interactions: [],
   wishlists: [],

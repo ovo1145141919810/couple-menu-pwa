@@ -1,5 +1,5 @@
 import { useMemo, useState, type CSSProperties } from 'react'
-import { Ban, Check, ChefHat, Clock3, Heart, MessageCircleHeart, Reply, Send, Star, Utensils, X } from 'lucide-react'
+import { Ban, Check, ChefHat, ChevronDown, Clock3, Heart, History, Inbox, MessageCircleHeart, Reply, Send, Star, Utensils, X } from 'lucide-react'
 import { allowedActions, deriveWishlistState, statusLabel } from '../domain'
 import type { AppRepository, AppSnapshot, InteractionOption, InteractionResponse, ItemAction, Profile, Review, WishlistItem } from '../types'
 import type { Execute } from './AppShell'
@@ -221,6 +221,7 @@ export function WishesPage({ snapshot, profile, repository, execute }: { snapsho
   const [reviewItem, setReviewItem] = useState<WishlistItem | null>(null)
   const [responseItem, setResponseItem] = useState<WishlistItem | null>(null)
   const [messageReplyItem, setMessageReplyItem] = useState<WishlistItem | null>(null)
+  const [openSection, setOpenSection] = useState<'incoming' | 'outgoing' | 'history' | null>('incoming')
   const wishlistMap = useMemo(() => new Map(snapshot.wishlists.map((wishlist) => [wishlist.id, wishlist])), [snapshot.wishlists])
   const sorted = [...snapshot.items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const incomingActive = sorted.filter((item) => wishlistMap.get(item.wishlistId)?.receiverId === profile.id && !terminal.has(item.status))
@@ -249,20 +250,39 @@ export function WishesPage({ snapshot, profile, repository, execute }: { snapsho
       />
     ))
 
+  const sections = [
+    { id: 'incoming' as const, title: '等我回应', description: '需要我接住的菜品与互动', icon: Inbox, items: incomingActive, direction: 'incoming' as const, emptyIcon: '💗', emptyTitle: '暂时没有待办', emptyCopy: '可以去发起一个甜蜜互动。' },
+    { id: 'outgoing' as const, title: '我发出的心愿', description: '看看对方回应到哪一步', icon: Send, items: outgoing, direction: 'outgoing' as const, emptyIcon: '🧺', emptyTitle: '还没有送出心愿', emptyCopy: '去菜单或互动页挑一个吧。' },
+    { id: 'history' as const, title: '我回应过的', description: '已经认真接住的甜蜜记录', icon: History, items: receivedHistory, direction: 'incoming' as const, emptyIcon: '💌', emptyTitle: '还没有回应记录', emptyCopy: '以后处理过的心愿会收在这里。' }
+  ]
+
   return (
     <section className="page-section">
       <div className="section-heading"><div><p className="mini-label">WISHES FOR TWO</p><SplitText tag="h2" text={profile.role === 'boyfriend' ? '该我回应啦' : '我们的心愿单'} delay={76} duration={0.7} from={{ opacity: 0, y: 28, rotate: 4 }} to={{ opacity: 1, y: 0, rotate: 0 }} rootMargin="0px" triggerOnMount /></div><span className="heading-emoji">💌</span></div>
       <div className="summary-strip"><div><strong>{incomingActive.length}</strong><span>等我回应</span></div><div><strong>{pendingGroups.length}</strong><span>进行中心愿单</span></div><div><strong>{snapshot.reviews.length}</strong><span>甜蜜评价</span></div></div>
 
-      <div className="subsection-heading"><h3>等我回应</h3><span>{incomingActive.length}</span></div>
-      <div className="wish-list">{renderList(incomingActive, 'incoming')}</div>
-      {incomingActive.length === 0 && <div className="empty-state compact"><span>💗</span><h3>暂时没有待办</h3><p>可以去发起一个甜蜜互动。</p></div>}
-
-      <div className="subsection-heading"><h3>我发出的心愿</h3><span>{outgoing.length}</span></div>
-      <div className="wish-list">{renderList(outgoing, 'outgoing')}</div>
-      {outgoing.length === 0 && <div className="empty-state compact"><span>🧺</span><h3>还没有送出心愿</h3></div>}
-
-      {receivedHistory.length > 0 && <><div className="subsection-heading"><h3>我回应过的</h3><span>{receivedHistory.length}</span></div><div className="wish-list faded-list">{renderList(receivedHistory, 'incoming')}</div></>}
+      <div className="wish-accordion" aria-label="心愿分类导航">
+        {sections.map((section) => {
+          const Icon = section.icon
+          const open = openSection === section.id
+          return (
+            <section className={`wish-fold ${open ? 'open' : ''}`} key={section.id}>
+              <button className="wish-fold-toggle" aria-expanded={open} onClick={() => setOpenSection(open ? null : section.id)}>
+                <span className="wish-fold-icon"><Icon /></span>
+                <span className="wish-fold-copy"><strong>{section.title}</strong><small>{section.description}</small></span>
+                <span className="wish-fold-count">{section.items.length}</span>
+                <ChevronDown className="wish-fold-chevron" />
+              </button>
+              {open && (
+                <div className="wish-fold-content">
+                  <div className={`wish-list ${section.id === 'history' ? 'faded-list' : ''}`}>{renderList(section.items, section.direction)}</div>
+                  {section.items.length === 0 && <div className="empty-state compact"><span>{section.emptyIcon}</span><h3>{section.emptyTitle}</h3><p>{section.emptyCopy}</p></div>}
+                </div>
+              )}
+            </section>
+          )
+        })}
+      </div>
 
       {declineItem && <DeclineDialog onClose={() => setDeclineItem(null)} onSubmit={async (reply) => { const ok = await execute(() => repository.transitionItem(declineItem.id, 'decline', reply), '已经把回复送过去了'); if (ok) setDeclineItem(null) }} />}
       {messageReplyItem && <MessageReplyDialog item={messageReplyItem} onClose={() => setMessageReplyItem(null)} onSubmit={async (reply) => { const ok = await execute(() => repository.replyToMessage(messageReplyItem.id, reply), '回复已经送到对方那里啦 💌'); if (ok) setMessageReplyItem(null) }} />}

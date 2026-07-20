@@ -11,7 +11,7 @@ import type {
 import { blobToDataUrl, compressImage } from '../lib/image'
 import { demoSeed } from './demoSeed'
 
-const STORAGE_KEY = 'couple-menu-demo-v1'
+const STORAGE_KEY = 'couple-menu-demo-v2'
 const CHANGE_EVENT = 'couple-menu-demo-change'
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T
@@ -331,30 +331,111 @@ export class DemoRepository implements AppRepository {
     writeDemoData(snapshot)
   }
 
-  async createInteraction(input: { name: string; emoji: string; color: string; icon?: File | null }) {
+  async createInteractionCategory(name: string) {
+    const snapshot = readDemoData()
+    this.profile(snapshot)
+    const value = name.trim()
+    if (!value) throw new Error('分类名称不能为空。')
+    if (value.length > 30) throw new Error('分类名称最多 30 个字。')
+    snapshot.interactionCategories.push({
+      id: id('love-cat'),
+      name: value,
+      position: Math.max(0, ...snapshot.interactionCategories.map((item) => item.position)) + 10
+    })
+    writeDemoData(snapshot)
+  }
+
+  async renameInteractionCategory(categoryId: string, name: string) {
+    const snapshot = readDemoData()
+    this.profile(snapshot)
+    const category = snapshot.interactionCategories.find((item) => item.id === categoryId && !item.archivedAt)
+    const value = name.trim()
+    if (!category) throw new Error('互动分类不存在。')
+    if (!value) throw new Error('分类名称不能为空。')
+    if (value.length > 30) throw new Error('分类名称最多 30 个字。')
+    category.name = value
+    writeDemoData(snapshot)
+  }
+
+  async moveInteractionCategory(categoryId: string, direction: -1 | 1) {
+    const snapshot = readDemoData()
+    this.profile(snapshot)
+    const ordered = snapshot.interactionCategories.filter((item) => !item.archivedAt).sort((a, b) => a.position - b.position)
+    const index = ordered.findIndex((item) => item.id === categoryId)
+    const other = ordered[index + direction]
+    if (index < 0 || !other) return
+    const currentPosition = ordered[index].position
+    ordered[index].position = other.position
+    other.position = currentPosition
+    writeDemoData(snapshot)
+  }
+
+  async archiveInteractionCategory(categoryId: string) {
+    const snapshot = readDemoData()
+    this.profile(snapshot)
+    const activeCategories = snapshot.interactionCategories.filter((item) => !item.archivedAt)
+    if (activeCategories.length <= 1) throw new Error('至少需要保留一个互动分类。')
+    if (snapshot.interactions.some((item) => !item.archivedAt && item.categoryId === categoryId)) {
+      throw new Error('请先把这个分类里的互动拖到其他分类。')
+    }
+    const category = activeCategories.find((item) => item.id === categoryId)
+    if (!category) throw new Error('互动分类不存在。')
+    category.archivedAt = new Date().toISOString()
+    writeDemoData(snapshot)
+  }
+
+  async saveInteractionLayout(items: Array<{ id: string; categoryId: string }>) {
+    const snapshot = readDemoData()
+    this.profile(snapshot)
+    const active = snapshot.interactions.filter((item) => !item.archivedAt)
+    const activeCategories = new Set(snapshot.interactionCategories.filter((item) => !item.archivedAt).map((item) => item.id))
+    if (items.length !== active.length || new Set(items.map((item) => item.id)).size !== active.length) {
+      throw new Error('互动清单已经变化，请刷新后重新排序。')
+    }
+    const positions = new Map<string, number>()
+    items.forEach((entry) => {
+      const interaction = active.find((item) => item.id === entry.id)
+      if (!interaction || !activeCategories.has(entry.categoryId)) throw new Error('互动清单已经变化，请刷新后重新排序。')
+      const position = (positions.get(entry.categoryId) || 0) + 10
+      positions.set(entry.categoryId, position)
+      interaction.categoryId = entry.categoryId
+      interaction.position = position
+    })
+    writeDemoData(snapshot)
+  }
+
+  async createInteraction(input: { name: string; categoryId: string; emoji: string; color: string; icon?: File | null }) {
     const snapshot = readDemoData()
     const actor = this.profile(snapshot)
+    if (!snapshot.interactionCategories.some((item) => item.id === input.categoryId && !item.archivedAt)) throw new Error('请选择有效的互动分类。')
     const iconUrl = input.icon ? await blobToDataUrl(await compressImage(input.icon, 512, 0.86)) : null
     snapshot.interactions.push({
       id: id('love'),
+      categoryId: input.categoryId,
       name: input.name.trim(),
       emoji: input.emoji,
       color: input.color,
       isSystem: false,
       creatorId: actor.id,
-      iconUrl
+      iconUrl,
+      position: Math.max(0, ...snapshot.interactions.filter((item) => item.categoryId === input.categoryId).map((item) => item.position)) + 10
     })
     writeDemoData(snapshot)
   }
 
-  async updateInteraction(input: { id: string; name: string; emoji: string; color: string; icon?: File | null }) {
+  async updateInteraction(input: { id: string; name: string; categoryId: string; emoji: string; color: string; icon?: File | null }) {
     const snapshot = readDemoData()
     const actor = this.profile(snapshot)
     const interaction = snapshot.interactions.find((item) => item.id === input.id)
     if (!interaction || interaction.isSystem || interaction.creatorId !== actor.id) {
       throw new Error('只能修改自己创建的互动。')
     }
+    if (!snapshot.interactionCategories.some((item) => item.id === input.categoryId && !item.archivedAt)) throw new Error('请选择有效的互动分类。')
+    if (interaction.categoryId !== input.categoryId) {
+      interaction.position = Math.max(0, ...snapshot.interactions.filter((item) => item.categoryId === input.categoryId && !item.archivedAt).map((item) => item.position)) + 10
+    }
     interaction.name = input.name.trim()
+    interaction.categoryId = input.categoryId
     interaction.emoji = input.emoji
     interaction.color = input.color
     if (input.icon) interaction.iconUrl = await blobToDataUrl(await compressImage(input.icon, 512, 0.86))

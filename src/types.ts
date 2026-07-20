@@ -17,6 +17,13 @@ export interface Category {
   archivedAt?: string | null
 }
 
+export interface InteractionCategory {
+  id: string
+  name: string
+  position: number
+  archivedAt?: string | null
+}
+
 export interface Dish {
   id: string
   categoryId: string
@@ -29,6 +36,7 @@ export interface Dish {
 
 export interface InteractionOption {
   id: string
+  categoryId: string
   name: string
   emoji: string
   color: string
@@ -36,6 +44,7 @@ export interface InteractionOption {
   creatorId?: string | null
   iconPath?: string | null
   iconUrl?: string | null
+  position: number
   archivedAt?: string | null
 }
 
@@ -79,6 +88,7 @@ export interface Review {
 export interface AppSnapshot {
   profiles: Profile[]
   categories: Category[]
+  interactionCategories: InteractionCategory[]
   dishes: Dish[]
   interactions: InteractionOption[]
   wishlists: Wishlist[]
@@ -117,7 +127,12 @@ export interface AppRepository {
   updateDish(input: { id: string; name: string; categoryId: string; photo?: File | null }): Promise<void>
   moveDish(id: string, direction: -1 | 1): Promise<void>
   archiveDish(id: string): Promise<void>
-  createInteraction(input: { name: string; emoji: string; color: string; icon?: File | null }): Promise<void>
-  updateInteraction(input: { id: string; name: string; emoji: string; color: string; icon?: File | null }): Promise<void>
+  createInteractionCategory(name: string): Promise<void>
+  renameInteractionCategory(id: string, name: string): Promise<void>
+  moveInteractionCategory(id: string, direction: -1 | 1): Promise<void>
+  archiveInteractionCategory(id: string): Promise<void>
+  saveInteractionLayout(items: Array<{ id: string; categoryId: string }>): Promise<void>
+  createInteraction(input: { name: string; categoryId: string; emoji: string; color: string; icon?: File | null }): Promise<void>
+  updateInteraction(input: { id: string; name: string; categoryId: string; emoji: string; color: string; icon?: File | null }): Promise<void>
   archiveInteraction(id: string): Promise<void>
 }

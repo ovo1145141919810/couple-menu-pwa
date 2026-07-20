@@ -25,4 +25,29 @@ describe('portfolio entry points', () => {
     expect(screen.getByText('上传自定义图标')).toBeInTheDocument()
     expect(document.querySelector('input[type="file"][accept="image/*"]')).toBeInTheDocument()
   })
+
+  it('shows shared interaction categories and layout controls for either partner', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '想要' }))
+
+    expect(screen.getByRole('button', { name: '日常贴贴' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /调整排版/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /管理分类/ }))
+    expect(screen.getByRole('heading', { name: '管理互动分类' })).toBeInTheDocument()
+    expect(screen.getByText(/你们两个人都可以创建/)).toBeInTheDocument()
+  })
+
+  it('organizes wishes into three collapsible navigation sections', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /心愿/ }))
+
+    expect(screen.getByRole('button', { name: /等我回应/ })).toHaveAttribute('aria-expanded', 'true')
+    const outgoing = screen.getByRole('button', { name: /我发出的心愿/ })
+    expect(outgoing).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(outgoing)
+    expect(outgoing).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: /我回应过的/ })).toBeInTheDocument()
+  })
 })

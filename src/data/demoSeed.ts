@@ -23,6 +23,11 @@ export const demoSeed: AppSnapshot = {
     { id: 'cat-soup', name: '汤羹', position: 40 },
     { id: 'cat-sweet', name: '甜品饮品', position: 50 }
   ],
+  interactionCategories: [
+    { id: 'love-cat-daily', name: '日常贴贴', position: 10 },
+    { id: 'love-cat-company', name: '陪伴时光', position: 20 },
+    { id: 'love-cat-mood', name: '小情绪', position: 30 }
+  ],
   dishes: [
     { id: 'dish-rice', categoryId: 'cat-main', name: '爱心蛋炒饭', position: 10 },
     { id: 'dish-noodle', categoryId: 'cat-main', name: '番茄鸡蛋面', position: 20 },
@@ -33,17 +38,19 @@ export const demoSeed: AppSnapshot = {
     { id: 'dish-cake', categoryId: 'cat-sweet', name: '草莓小蛋糕', position: 10 }
   ],
   interactions: [
-    { id: 'love-kiss', name: '亲亲', emoji: '💋', color: '#f7a7b4', isSystem: true },
-    { id: 'love-hug', name: '抱抱', emoji: '🫂', color: '#e9a6cf', isSystem: true },
-    { id: 'love-peace', name: '和好', emoji: '🤝', color: '#e7b37b', isSystem: true },
-    { id: 'love-hit', name: '打你', emoji: '👊', color: '#a9b8e8', isSystem: true },
+    { id: 'love-kiss', categoryId: 'love-cat-daily', name: '亲亲', emoji: '💋', color: '#f7a7b4', isSystem: true, position: 10 },
+    { id: 'love-hug', categoryId: 'love-cat-daily', name: '抱抱', emoji: '🫂', color: '#e9a6cf', isSystem: true, position: 20 },
+    { id: 'love-peace', categoryId: 'love-cat-mood', name: '和好', emoji: '🤝', color: '#e7b37b', isSystem: true, position: 10 },
+    { id: 'love-hit', categoryId: 'love-cat-mood', name: '打你', emoji: '👊', color: '#a9b8e8', isSystem: true, position: 20 },
     {
       id: 'love-walk',
+      categoryId: 'love-cat-company',
       name: '陪我散步',
       emoji: '🌙',
       color: '#90b8aa',
       isSystem: false,
-      creatorId: DEMO_GIRLFRIEND_ID
+      creatorId: DEMO_GIRLFRIEND_ID,
+      position: 10
     }
   ],
   wishlists: [

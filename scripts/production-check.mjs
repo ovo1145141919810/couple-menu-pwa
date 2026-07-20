@@ -13,7 +13,7 @@ const migrations = await Promise.all(migrationNames.map(async (name) => ({ name,
 const allSql = migrations.map(({ sql }) => sql).join('\n')
 const failures = []
 
-const requiredTables = ['profiles', 'categories', 'dishes', 'interaction_options', 'wishlists', 'wishlist_items', 'reviews', 'push_subscriptions']
+const requiredTables = ['profiles', 'categories', 'dishes', 'interaction_categories', 'interaction_options', 'wishlists', 'wishlist_items', 'reviews', 'push_subscriptions']
 for (const table of requiredTables) {
   if (!new RegExp(`alter\\s+table\\s+public\\.${table}\\s+enable\\s+row\\s+level\\s+security`, 'i').test(allSql)) {
     failures.push(`${table}: RLS is not enabled in migrations`)

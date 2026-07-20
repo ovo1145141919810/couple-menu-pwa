@@ -28,7 +28,7 @@ import { LiveRepository } from './liveRepository'
 import type { Profile } from '../types'
 
 const girlfriend: Profile = { id: 'girlfriend-id', role: 'girlfriend', displayName: '小桃' }
-const boyfriend: Profile = { id: 'boyfriend-id', role: 'boyfriend', displayName: '小胡' }
+const boyfriend: Profile = { id: 'boyfriend-id', role: 'boyfriend', displayName: '阿川' }
 
 describe('LiveRepository production writes', () => {
   beforeEach(() => {
@@ -109,11 +109,34 @@ describe('LiveRepository production writes', () => {
 
   it('notifies the other account when a custom interaction is added', async () => {
     const repository = new LiveRepository(girlfriend)
-    await repository.createInteraction({ name: '贴贴十分钟', emoji: '💞', color: '#f6d8df' })
+    await repository.createInteraction({ name: '贴贴十分钟', categoryId: 'love-category-id', emoji: '💞', color: '#f6d8df' })
 
     expect(mocks.from).toHaveBeenCalledWith('interaction_options')
     expect(mocks.invoke).toHaveBeenCalledWith('send-notification', {
       body: { event: 'interaction_created', resourceId: 'created-id' }
+    })
+  })
+
+  it('uses protected functions for shared interaction categories and layout', async () => {
+    const repository = new LiveRepository(girlfriend)
+    await repository.createInteractionCategory('周末约会')
+    await repository.renameInteractionCategory('category-id', '约会清单')
+    await repository.moveInteractionCategory('category-id', -1)
+    await repository.archiveInteractionCategory('empty-category-id')
+    await repository.saveInteractionLayout([
+      { id: 'hug-id', categoryId: 'daily-id' },
+      { id: 'walk-id', categoryId: 'date-id' }
+    ])
+
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, 'create_interaction_category', { p_name: '周末约会' })
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, 'rename_interaction_category', { p_category_id: 'category-id', p_name: '约会清单' })
+    expect(mocks.rpc).toHaveBeenNthCalledWith(3, 'move_interaction_category', { p_category_id: 'category-id', p_direction: -1 })
+    expect(mocks.rpc).toHaveBeenNthCalledWith(4, 'archive_interaction_category', { p_category_id: 'empty-category-id' })
+    expect(mocks.rpc).toHaveBeenNthCalledWith(5, 'save_interaction_layout', {
+      p_items: [
+        { id: 'hug-id', category_id: 'daily-id' },
+        { id: 'walk-id', category_id: 'date-id' }
+      ]
     })
   })
 })
