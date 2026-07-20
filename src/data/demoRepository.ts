@@ -334,6 +334,26 @@ export class DemoRepository implements AppRepository {
     writeDemoData(snapshot)
   }
 
+  async saveDishLayout(items: Array<{ id: string; categoryId: string }>) {
+    const snapshot = readDemoData()
+    if (this.profile(snapshot).role !== 'boyfriend') throw new Error('只有男朋友可以调整菜单排版。')
+    const active = snapshot.dishes.filter((item) => !item.archivedAt)
+    const activeCategories = new Set(snapshot.categories.filter((item) => !item.archivedAt).map((item) => item.id))
+    if (items.length !== active.length || new Set(items.map((item) => item.id)).size !== active.length) {
+      throw new Error('菜品清单已经变化，请刷新后重新排序。')
+    }
+    const positions = new Map<string, number>()
+    items.forEach((entry) => {
+      const dish = active.find((item) => item.id === entry.id)
+      if (!dish || !activeCategories.has(entry.categoryId)) throw new Error('菜品清单已经变化，请刷新后重新排序。')
+      const position = (positions.get(entry.categoryId) || 0) + 10
+      positions.set(entry.categoryId, position)
+      dish.categoryId = entry.categoryId
+      dish.position = position
+    })
+    writeDemoData(snapshot)
+  }
+
   async createInteractionCategory(name: string) {
     const snapshot = readDemoData()
     this.profile(snapshot)

@@ -139,4 +139,19 @@ describe('LiveRepository production writes', () => {
       ]
     })
   })
+
+  it('saves the full dish layout through one protected database function', async () => {
+    const repository = new LiveRepository(boyfriend)
+    await repository.saveDishLayout([
+      { id: 'wings-id', categoryId: 'meat-id' },
+      { id: 'rice-id', categoryId: 'main-id' }
+    ])
+
+    expect(mocks.rpc).toHaveBeenCalledWith('save_dish_layout', {
+      p_items: [
+        { id: 'wings-id', category_id: 'meat-id' },
+        { id: 'rice-id', category_id: 'main-id' }
+      ]
+    })
+  })
 })

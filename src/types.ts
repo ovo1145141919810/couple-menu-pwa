@@ -128,6 +128,7 @@ export interface AppRepository {
   createDish(input: { name: string; categoryId: string; photo?: File | null }): Promise<void>
   updateDish(input: { id: string; name: string; categoryId: string; photo?: File | null }): Promise<void>
   moveDish(id: string, direction: -1 | 1): Promise<void>
+  saveDishLayout(items: Array<{ id: string; categoryId: string }>): Promise<void>
   archiveDish(id: string): Promise<void>
   createInteractionCategory(name: string): Promise<void>
   renameInteractionCategory(id: string, name: string): Promise<void>

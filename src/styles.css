@@ -362,6 +362,9 @@ h1, h2, h3, p { margin-top: 0; }
 .segmented-control button { min-height: 40px; border: 0; border-radius: 12px; color: #887276; background: transparent; font-size: .75rem; font-weight: 800; cursor: pointer; }
 .segmented-control button.active { color: var(--wine); background: #fff; box-shadow: 0 4px 12px rgba(76,43,51,.08); }
 .add-wide { width: 100%; margin-bottom: .75rem; }
+.manage-primary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; margin-bottom: .75rem; }
+.manage-primary-actions .add-wide { min-height: 44px; margin-bottom: 0; }
+.manage-primary-actions svg { width: 17px; }
 .manage-list { display: grid; gap: .55rem; }
 .manage-row { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: .65rem; padding: .65rem; border: 1px solid var(--line); border-radius: 17px; background: #fff; }
 .manage-thumb { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; overflow: hidden; background: #f8e7e2; font-size: 1.5rem; }

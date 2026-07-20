@@ -1,9 +1,10 @@
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { Archive, ArrowDown, ArrowUp, Camera, Check, Edit3, FolderCog, FolderPlus, GripVertical, Heart, LayoutGrid, Plus, Sparkles, Star, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Archive, ArrowDown, ArrowUp, Camera, Check, Edit3, FolderCog, FolderPlus, Heart, LayoutGrid, Plus, Sparkles, Star, X } from 'lucide-react'
 import { dishEmoji } from '../domain'
 import type { AppRepository, AppSnapshot, CartItem, InteractionCategory, InteractionOption, Profile } from '../types'
 import type { Execute } from './AppShell'
 import SplitText from './effects/SplitText'
+import { SortableLayoutDialog } from './SortableLayoutDialog'
 
 export function MenuPage({ snapshot, onAdd }: { snapshot: AppSnapshot; onAdd: (item: CartItem) => void }) {
   const categories = snapshot.categories.filter((item) => !item.archivedAt).sort((a, b) => a.position - b.position)
@@ -170,8 +171,6 @@ function InteractionCategoryDialog({
   )
 }
 
-type LayoutItem = { id: string; categoryId: string }
-
 function InteractionLayoutDialog({
   categories,
   interactions,
@@ -185,105 +184,25 @@ function InteractionLayoutDialog({
   execute: Execute
   onClose: () => void
 }) {
-  const initial = categories.flatMap((category) => interactions
-    .filter((item) => item.categoryId === category.id)
-    .sort((a, b) => a.position - b.position)
-    .map((item) => ({ id: item.id, categoryId: category.id })))
-  const [draft, setDraft] = useState<LayoutItem[]>(initial)
-  const draftRef = useRef(draft)
-  const [draggingId, setDraggingId] = useState<string | null>(null)
-  const interactionMap = new Map(interactions.map((item) => [item.id, item]))
-
-  const updateDraft = (updater: (items: LayoutItem[]) => LayoutItem[]) => {
-    setDraft((current) => {
-      const next = updater(current)
-      draftRef.current = next
-      return next
-    })
-  }
-
-  const moveNear = (dragId: string, targetId: string, after: boolean) => updateDraft((current) => {
-    if (dragId === targetId) return current
-    const dragged = current.find((item) => item.id === dragId)
-    const target = current.find((item) => item.id === targetId)
-    if (!dragged || !target) return current
-    const next = current.filter((item) => item.id !== dragId)
-    const targetIndex = next.findIndex((item) => item.id === targetId)
-    next.splice(targetIndex + (after ? 1 : 0), 0, { ...dragged, categoryId: target.categoryId })
-    return next
-  })
-
-  const moveToCategory = (dragId: string, categoryId: string) => updateDraft((current) => {
-    const dragged = current.find((item) => item.id === dragId)
-    if (!dragged || dragged.categoryId === categoryId) return current
-    const next = current.filter((item) => item.id !== dragId)
-    const lastIndex = next.reduce((found, item, index) => item.categoryId === categoryId ? index : found, -1)
-    next.splice(lastIndex + 1, 0, { ...dragged, categoryId })
-    return next
-  })
-
-  const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>, dragId: string) => {
-    event.preventDefault()
-    const targetElement = document.elementFromPoint(event.clientX, event.clientY) as HTMLElement | null
-    const targetRow = targetElement?.closest<HTMLElement>('[data-layout-item]')
-    if (targetRow?.dataset.layoutItem && targetRow.dataset.layoutItem !== dragId) {
-      const rect = targetRow.getBoundingClientRect()
-      moveNear(dragId, targetRow.dataset.layoutItem, event.clientY > rect.top + rect.height / 2)
-      return
-    }
-    const targetCategory = targetElement?.closest<HTMLElement>('[data-layout-category]')?.dataset.layoutCategory
-    if (targetCategory) moveToCategory(dragId, targetCategory)
-  }
-
   return (
-    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <section className="sheet interaction-layout-sheet" role="dialog" aria-modal="true">
-        <div className="sheet-handle" />
-        <header className="sheet-header"><div><p className="mini-label">DRAG YOUR LOVE</p><h2>调整互动排版</h2></div><button className="icon-button" onClick={onClose}><X /></button></header>
-        <p className="dialog-copy">按住每个互动右侧的拖动手柄，上下移动；也可以直接拖进另一个分类。</p>
-        <div className="interaction-layout-list">
-          {categories.map((category) => {
-            const categoryItems = draft.filter((item) => item.categoryId === category.id)
-            return (
-              <section className="layout-category" data-layout-category={category.id} key={category.id}>
-                <header><strong>{category.name}</strong><span>{categoryItems.length}</span></header>
-                <div className={`layout-dropzone ${categoryItems.length === 0 ? 'empty' : ''}`}>
-                  {categoryItems.map((entry) => {
-                    const interaction = interactionMap.get(entry.id)!
-                    return (
-                      <article className={`layout-interaction-row ${draggingId === interaction.id ? 'dragging' : ''}`} data-layout-item={interaction.id} key={interaction.id}>
-                        <span className={interaction.iconUrl ? 'has-image' : ''}>{interaction.iconUrl ? <img src={interaction.iconUrl} alt="" /> : interaction.emoji}</span>
-                        <div><strong>{interaction.name}</strong><small>{interaction.isSystem ? '默契预设' : '自定义互动'}</small></div>
-                        <button
-                          className="drag-handle"
-                          aria-label={`拖动${interaction.name}`}
-                          onPointerDown={(event) => {
-                            if (event.pointerType === 'mouse' && event.button !== 0) return
-                            event.preventDefault()
-                            event.currentTarget.setPointerCapture(event.pointerId)
-                            setDraggingId(interaction.id)
-                          }}
-                          onPointerMove={(event) => handlePointerMove(event, interaction.id)}
-                          onPointerUp={(event) => {
-                            if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-                            setDraggingId(null)
-                          }}
-                          onPointerCancel={() => setDraggingId(null)}
-                        ><GripVertical /></button>
-                      </article>
-                    )
-                  })}
-                  {categoryItems.length === 0 && <span>拖一个互动到这里</span>}
-                </div>
-              </section>
-            )
-          })}
-        </div>
-        <div className="interaction-layout-save-bar">
-          <button className="button button-primary button-large" onClick={() => void execute(() => repository.saveInteractionLayout(draftRef.current), '互动排版已经保存').then((ok) => ok && onClose())}><Check /> 保存新的排版</button>
-        </div>
-      </section>
-    </div>
+    <SortableLayoutDialog
+      eyebrow="DRAG YOUR LOVE"
+      title="调整互动排版"
+      description="按住每个互动右侧的拖动手柄，上下移动；也可以直接拖进另一个分类。"
+      categories={categories}
+      items={interactions.map((interaction) => ({
+        id: interaction.id,
+        categoryId: interaction.categoryId,
+        name: interaction.name,
+        position: interaction.position,
+        imageUrl: interaction.iconUrl,
+        icon: interaction.emoji,
+        meta: interaction.isSystem ? '默契预设' : '自定义互动'
+      }))}
+      emptyLabel="拖一个互动到这里"
+      onSave={(items) => execute(() => repository.saveInteractionLayout(items), '互动排版已经保存')}
+      onClose={onClose}
+    />
   )
 }
 

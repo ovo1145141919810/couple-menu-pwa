@@ -126,4 +126,19 @@ describe('privacy-safe demo repository', () => {
     expect(reviews).toHaveLength(1)
     expect(reviews[0]).toMatchObject({ rating: 5, comment: '改成五星' })
   })
+
+  it('lets the boyfriend reorder dishes and move them between categories atomically', async () => {
+    const repo = new DemoRepository(() => 'boyfriend')
+    const active = readDemoData().dishes.filter((dish) => !dish.archivedAt)
+    await repo.saveDishLayout([
+      { id: 'dish-wings', categoryId: 'cat-main' },
+      ...active.filter((dish) => dish.id !== 'dish-wings').map((dish) => ({ id: dish.id, categoryId: dish.categoryId }))
+    ])
+
+    const mainDishes = readDemoData().dishes
+      .filter((dish) => dish.categoryId === 'cat-main')
+      .sort((a, b) => a.position - b.position)
+    expect(mainDishes.map((dish) => dish.id)).toEqual(['dish-wings', 'dish-rice', 'dish-noodle'])
+    expect(mainDishes.map((dish) => dish.position)).toEqual([10, 20, 30])
+  })
 })

@@ -60,6 +60,18 @@ describe('portfolio entry points', () => {
     expect(screen.getByText('添加本次体验照片')).toBeInTheDocument()
   })
 
+  it('lets the boyfriend open the draggable menu layout editor', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /女朋友 · 切换/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '菜单' }))
+    fireEvent.click(screen.getByRole('button', { name: /调整菜单排版/ }))
+
+    expect(screen.getByRole('heading', { name: '调整菜单排版' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '拖动爱心蛋炒饭' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /保存新的排版/ }).closest('.interaction-layout-save-bar')).toBeInTheDocument()
+  })
+
   it('organizes wishes into three collapsible navigation sections', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /查看作品演示/ }))

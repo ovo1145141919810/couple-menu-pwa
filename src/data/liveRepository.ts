@@ -388,6 +388,13 @@ export class LiveRepository implements AppRepository {
     ensureNoError(error, '菜品排序失败，请稍后再试。')
   }
 
+  async saveDishLayout(items: Array<{ id: string; categoryId: string }>) {
+    const { error } = await requiredClient().rpc('save_dish_layout', {
+      p_items: items.map((item) => ({ id: item.id, category_id: item.categoryId }))
+    })
+    ensureNoError(error, '菜单排版保存失败，请刷新后再试。')
+  }
+
   async archiveDish(id: string) {
     const { error } = await requiredClient().from('dishes').update({ archived_at: new Date().toISOString() }).eq('id', id)
     ensureNoError(error, '菜品归档失败，请稍后再试。')

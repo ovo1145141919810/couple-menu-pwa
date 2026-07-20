@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Archive, ArrowDown, ArrowUp, Camera, Edit3, FolderPlus, Plus, X } from 'lucide-react'
+import { Archive, ArrowDown, ArrowUp, Camera, Edit3, FolderPlus, LayoutGrid, Plus, X } from 'lucide-react'
 import { dishEmoji } from '../domain'
 import type { AppRepository, AppSnapshot, Dish } from '../types'
 import type { Execute } from './AppShell'
 import SplitText from './effects/SplitText'
+import { SortableLayoutDialog } from './SortableLayoutDialog'
 
 function DishForm({
   dish,
@@ -42,6 +43,7 @@ export function ManagePage({ snapshot, repository, execute }: { snapshot: AppSna
   const [tab, setTab] = useState<'dishes' | 'categories'>('dishes')
   const [dishFormOpen, setDishFormOpen] = useState(false)
   const [editingDish, setEditingDish] = useState<Dish | null>(null)
+  const [layoutOpen, setLayoutOpen] = useState(false)
   const [newCategory, setNewCategory] = useState('')
   const categories = snapshot.categories.filter((item) => !item.archivedAt).sort((a, b) => a.position - b.position)
   const categoryMap = new Map(snapshot.categories.map((item) => [item.id, item.name]))
@@ -57,7 +59,10 @@ export function ManagePage({ snapshot, repository, execute }: { snapshot: AppSna
 
       {tab === 'dishes' ? (
         <>
-          <button className="button button-primary add-wide" onClick={() => { setEditingDish(null); setDishFormOpen(true) }}><Plus /> 上新一道菜</button>
+          <div className="manage-primary-actions">
+            <button className="button button-primary add-wide" onClick={() => { setEditingDish(null); setDishFormOpen(true) }}><Plus /> 上新一道菜</button>
+            <button className="button button-soft add-wide" onClick={() => setLayoutOpen(true)}><LayoutGrid /> 调整菜单排版</button>
+          </div>
           <div className="manage-list">
             {dishes.map((dish) => {
               const siblings = dishes.filter((item) => item.categoryId === dish.categoryId)
@@ -111,6 +116,26 @@ export function ManagePage({ snapshot, repository, execute }: { snapshot: AppSna
             )
             if (ok) setDishFormOpen(false)
           }}
+        />
+      )}
+      {layoutOpen && (
+        <SortableLayoutDialog
+          eyebrow="ARRANGE THE MENU"
+          title="调整菜单排版"
+          description="按住每道菜右侧的拖动手柄，上下移动；也可以直接拖进另一个分类。"
+          categories={categories}
+          items={dishes.map((dish) => ({
+            id: dish.id,
+            categoryId: dish.categoryId,
+            name: dish.name,
+            position: dish.position,
+            imageUrl: dish.photoUrl,
+            icon: dishEmoji(dish.name),
+            meta: categoryMap.get(dish.categoryId) || '菜单菜品'
+          }))}
+          emptyLabel="拖一道菜到这里"
+          onSave={(items) => execute(() => repository.saveDishLayout(items), '菜单排版已经保存')}
+          onClose={() => setLayoutOpen(false)}
         />
       )}
     </section>
