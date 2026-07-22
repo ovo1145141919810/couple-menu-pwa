@@ -38,6 +38,13 @@ self.addEventListener('push', (event) => {
   event.waitUntil(Promise.all([show, badgeNavigator.setAppBadge?.(1) || Promise.resolve()]))
 })
 
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    windows.forEach((client) => client.postMessage({ type: 'couple-menu:push-subscription-changed' }))
+  })())
+})
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const targetUrl = safeNotificationUrl(event.notification.data?.url, self.registration.scope)

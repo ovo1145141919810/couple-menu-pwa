@@ -78,7 +78,30 @@ export function AppShell({ mode, currentRole, currentProfile, repository, onRole
 
   useEffect(() => localStorage.setItem(cartKey, JSON.stringify(cart)), [cart, cartKey])
   useEffect(() => {
-    if (mode === 'live') void syncExistingPushSubscription()
+    if (mode !== 'live') return
+
+    const repair = async (showResult = false) => {
+      const result = await syncExistingPushSubscription()
+      if (!showResult) return
+      if (result === 'repaired') setToast('消息提醒已自动修复 💌')
+      if (result === 'blocked') setToast('手机通知权限已关闭，请点击右上角铃铛恢复')
+    }
+    void repair(true)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void repair()
+    }
+    const handleSubscriptionChange = (event: MessageEvent) => {
+      if (event.data?.type === 'couple-menu:push-subscription-changed') void repair(true)
+    }
+    window.addEventListener('online', handleVisibility)
+    document.addEventListener('visibilitychange', handleVisibility)
+    navigator.serviceWorker?.addEventListener('message', handleSubscriptionChange)
+    return () => {
+      window.removeEventListener('online', handleVisibility)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      navigator.serviceWorker?.removeEventListener('message', handleSubscriptionChange)
+    }
   }, [mode, currentProfile?.id])
   useEffect(() => {
     if (!toast) return
